@@ -400,6 +400,7 @@ def obxrestrans(obj, data, val):
 class cOBX(Transform):
     """
     integer?    OBX 001 index?
+                OBX 004 (Observation Sub ID)
     val_num      HL7 OBX 005 (Result)    if OBX 002 (Value Type) == NM
     val_alpha   HL7 OBX 005 (Result)    if OBX 002 (Value Type) == FT
     val_unit    HL7 OBX 006 "Units"      
@@ -409,6 +410,7 @@ class cOBX(Transform):
     """
     transform = {'result': (5, obxrestrans),
                  'valuetype': (2, typetrans),
+                 'sub_id': (4, None),
                  'idx': (1, None),
                  'units': (6, None),
                  'range': (7, None),
@@ -513,7 +515,7 @@ if __name__ == '__main__':
 
         for (i, b) in enumerate(hl7.OBX):
             print "OBX", i, b.idx, b[2], repr(b.result), b.units, \
-                        b.range, b.abnormal, b.comment
+                        b.range, b.abnormal, b.comment, b.sub_id
 
         print
         print
