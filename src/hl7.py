@@ -100,14 +100,20 @@ HL7 References:
  * http://comstock-software.com/blogs/ifaces/2007/01/hl7-message-wrappers.html 
 """
 
-__version__ = '0.1.1'
-__author__ = 'John Paulett'
-__email__ = 'john -at- 7oars.com'
+__version__ = '0.1.1~xml.1'
+__author__ = 'John Paulett, Luke Leighton'
+__email__ = 'john -at- 7oars.com, lkcl@lkcl.net'
 __license__ = 'BSD'
-__copyright__ = 'Copyright 2009, John Paulett <john -at- 7oars.com>'
+__copyright__ = """Copyright 2009, John Paulett <john -at- 7oars.com>
+Copyright (C) 2010, Luke Kenneth Casson Leighton <lkcl@lkcl.net>"""
 __url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
 
 from datetime import datetime
+import sys, string
+import pprint
+
+from xml.sax import saxutils, handler, make_parser
+
 
 def ishl7(line):
     """Determines whether a *line* looks like an HL7 message.
@@ -267,6 +273,7 @@ class _ParsePlan(object):
         ## which indicates that we have nothing further.
         return None
 
+
 def datetransform(obj, data, dt):
     args = [dt[:4], dt[4:6], dt[6:8]]
     if len(dt) > 8:
@@ -278,6 +285,7 @@ def datetransform(obj, data, dt):
     args = tuple(map(int, args))
     return datetime(*args)
 
+
 class TIter:
     def __init__(self, d):
         self.cls = d.__class__
@@ -288,6 +296,7 @@ class TIter:
         data = self.i.next()
         return self.cls(data)
 
+
 class Transform:
     def __init__(self, data):
         self.data = data
@@ -296,13 +305,17 @@ class Transform:
         return TIter(self).__iter__()
 
     def __getitem__(self, key):
+        if isinstance(key, int):
+            if key > len(self.data):
+                return None
+            return self.fieldcheck(self.data[key])
         return self.__class__(self.data[key])
 
     def __getattr__(self, key):
         if isinstance(key, int):
             if key > len(self.data):
                 return None
-            val = self.fieldcheck(self.data[key])
+            return self.fieldcheck(self.data[key])
         tf = self.transform[key]
         idx = tf[0]
         typ = tf[1]
@@ -320,7 +333,9 @@ class Transform:
             if val[0] == u'':
                 return None
             return val[0]
+        return val
     
+
 class cPID(Transform):
     """
    PID 002 (External patient ID / BC Personal Health Number [PHN] if known)
@@ -338,15 +353,18 @@ class cPID(Transform):
    PID 008 (Sex / Gender of patient F/M/U-unknown) -> gender
 
     """
-    transform = {'ext_id': (2, None),
+    transform = {'idx': (1, None),
+                 'ext_id': (2, None),
+                 'id': (3, None),
                  'dob': (7, datetransform),
                  'name': (5, None),
-                 'id': (3, None),
+                 'address': (11, None),
                  'alt_id': (4, None),
                  'gender': (8, None),
-                 'tel': (13, None)
+                 'tel': (13, None),
                 }
-    
+
+
 class cORC(Transform):
     """ ORC 004      Placer Group Number / External Order ID     request_id
         ORC 003 (Filler Order Number / Order Number ID) of
@@ -356,6 +374,7 @@ class cORC(Transform):
                  'order_id': (3, None),
                  'provider': (12, None),
                 }
+
 
 def typetrans(obj, data, val):
     if val == u'NM':
@@ -373,8 +392,10 @@ def typetrans(obj, data, val):
     raise KeyError, "OBX 002 unrecognised value type '%s' on %s" % \
                 (val, repr(data))
 
+
 def obxrestrans(obj, data, val):
     return obj.valuetype(val)
+
 
 class cOBX(Transform):
     """
@@ -394,6 +415,7 @@ class cOBX(Transform):
                  'abnormal': (8, None),
                  'comment': (3, None),
                 }
+
 
 class cOBR(Transform):
     """
@@ -419,7 +441,7 @@ class cMessage:
     def __init__(self, hl7):
         self.hl7 = hl7
     def get_pid(self):
-        return cPID(self.hl7['PID'])
+        return cPID(self.hl7['PID'][0])
     def get_orc(self):
         return cORC(self.hl7['ORC'])
     def get_obr(self):
@@ -431,11 +453,6 @@ class cMessage:
     OBR = property(get_obr)
     OBX = property(get_obx)
 
-
-import sys, string
-import pprint
-
-from xml.sax import saxutils, handler, make_parser
 
 # --- The ContentHandler
 
@@ -485,7 +502,7 @@ if __name__ == '__main__':
         hl7 = cg.hl7s[k]
 
         p = hl7.PID
-        print "patient", p.id, p.ext_id, p.alt_id, p.gender, p.dob, p.tel
+        print "patient", p.id, p.name, p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel
 
         for (i, o) in enumerate(hl7.ORC):
             print "ORC", i, o.request_id, o.order_id, o.provider
@@ -495,7 +512,7 @@ if __name__ == '__main__':
                         b.copies_to, b.status, b.diagnostic
 
         for (i, b) in enumerate(hl7.OBX):
-            print "OBX", i, b.idx, repr(b.result), b.units, \
+            print "OBX", i, b.idx, b[2], repr(b.result), b.units, \
                         b.range, b.abnormal, b.comment
 
         print
