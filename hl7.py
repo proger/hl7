@@ -107,6 +107,8 @@ __license__ = 'BSD'
 __copyright__ = 'Copyright 2009, John Paulett <john -at- 7oars.com>'
 __url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
 
+from datetime import datetime
+
 def ishl7(line):
     """Determines whether a *line* looks like an HL7 message.
     This method only does a cursory check and does not fully 
@@ -192,12 +194,12 @@ class Message(Container):
     def __getitem__(self, key):
         res = []
         for i in self:
-            print type(i), type(i[0]), repr(i[0]), repr(key)
+            #print type(i), type(i[0]), repr(i[0]), repr(key)
             if i[0][0] == unicode(key):
                 res.append(i)
         if len(res) == 0:
             raise KeyError, "key %s not found in Message" % key
-        if len(res) == 1:
+        if key != 'OBR' and key != 'OBX' and len(res) == 1:
             return res[0]
         return res
 
@@ -267,6 +269,161 @@ class _ParsePlan(object):
         ## which indicates that we have nothing further.
         return None
 
+def datetransform(obj, data, dt):
+    args = [dt[:4], dt[4:6], dt[6:8]]
+    if len(dt) > 8:
+        args.append(dt[8:10])
+    if len(dt) > 10:
+        args.append(dt[10:12])
+    if len(dt) > 12:
+        args.append(dt[12:14])
+    args = tuple(map(int, args))
+    return datetime(*args)
+
+class TIter:
+    def __init__(self, d):
+        self.cls = d.__class__
+        self.i = d.data.__iter__()
+    def __iter__(self):
+        return self
+    def next(self):
+        data = self.i.next()
+        return self.cls(data)
+
+class Transform:
+    def __init__(self, data):
+        self.data = data
+
+    def __iter__(self):
+        return TIter(self).__iter__()
+
+    def __getitem__(self, key):
+        return self.__class__(self.data[key])
+
+    def __getattr__(self, key):
+        if isinstance(key, int):
+            if key > len(self.data):
+                return None
+            val = self.fieldcheck(self.data[key])
+        tf = self.transform[key]
+        idx = tf[0]
+        typ = tf[1]
+        if idx >= len(self.data):
+            return None
+        val = self.fieldcheck(self.data[idx])
+        if typ and val is not None:
+            val = typ(self, self.data, val)
+        return val
+
+    def fieldcheck(self, val):
+        if len(val) == 0:
+            return None
+        if len(val) == 1:
+            if val[0] == u'':
+                return None
+            return val[0]
+    
+class cPID(Transform):
+    """
+   PID 002 (External patient ID / BC Personal Health Number [PHN] if known)
+       -> other_info
+   PID 003 ( Addn Patient ID / Additional Patient Identifier; MRN nonunique)
+       -> ? concatenate into other_info using internal delimiter ^ ?
+   PID 004 (Alternate External Patient ID / e.g. Chart number)
+   PID 005 (Patient Name / Last^First^Middle (as supplied))
+       -> substring1 into lastnames
+       -> concatenate substrings2,3 into firstnames (space-delimited)
+   PID 007 (Date of Birth YYYYMMDD (null if unknown))
+       -> dob
+   PID 013 (Home Phone / May be partial and irregularly formatted)
+       -> ? concatenate into other_info using internal delimiter ^ ?
+   PID 008 (Sex / Gender of patient F/M/U-unknown) -> gender
+
+    """
+    transform = {'ext_id': (2, None),
+                 'dob': (7, datetransform),
+                 'name': (5, None),
+                 'id': (3, None),
+                 'alt_id': (4, None),
+                 'gender': (8, None),
+                 'tel': (13, None)
+                }
+    
+class cORC(Transform):
+    """ ORC 004      Placer Group Number / External Order ID     request_id
+        ORC 003 (Filler Order Number / Order Number ID) of
+                lab performing tests / Accession number-test code-tiebreaker
+    """
+    transform = {'request_id': (4, None),
+                 'order_id': (3, None),
+                 'provider': (12, None),
+                }
+
+def typetrans(obj, data, val):
+    if val == u'NM':
+        return float
+    elif val == u'FT':
+        return unicode
+    raise KeyError, "OBX 002 unrecognised value type '%s'" % val
+
+def obxrestrans(obj, data, val):
+    return obj.valuetype(val)
+
+class cOBX(Transform):
+    """
+    integer?    OBX 001 index?
+    val_num      HL7 OBX 005 (Result)    if OBX 002 (Value Type) == NM
+    val_alpha   HL7 OBX 005 (Result)    if OBX 002 (Value Type) == FT
+    val_unit    HL7 OBX 006 "Units"      
+    val_normal_range    OBX 007 (Reference Range)    
+    abnormality_indicator   OBX 008 (Abnormal Flags)     
+    note_provider   OBX NTE 003 (Comment)   to be renamed note_test_org
+    """
+    transform = {'result': (5, obxrestrans),
+                 'valuetype': (2, typetrans),
+                 'idx': (1, None),
+                 'units': (6, None),
+                 'range': (7, None),
+                 'abnormal': (8, None),
+                 'comment': (3, None),
+                }
+
+class cOBR(Transform):
+    """
+    OBR 001 index?
+    OBR 007 (Observation Date-Time)
+    OBR 014 (Specimen received Date timestamp),
+    OBR 022 (Report Status Change timestamp),
+    028 (Result Copies To),
+    OBR 025 (Result Status), 
+    OBR 024 "Diagnostic Service Section" 
+    """
+    transform = {'specimen_recv': (14, datetransform),
+                 'results_reported_when': (22, datetransform),
+                 'observation_when': (7, datetransform),
+                 'copies_to': (28, None),
+                 'idx': (1, None),
+                 'status': (25, None),
+                 'diagnostic': (24, None),
+                }
+    
+
+class cMessage:
+    def __init__(self, hl7):
+        self.hl7 = hl7
+    def get_pid(self):
+        return cPID(self.hl7['PID'])
+    def get_orc(self):
+        return cORC(self.hl7['ORC'])
+    def get_obr(self):
+        return cOBR(self.hl7['OBR'])
+    def get_obx(self):
+        return cOBX(self.hl7['OBX'])
+    PID = property(get_pid)
+    ORC = property(get_orc)
+    OBR = property(get_obr)
+    OBX = property(get_obx)
+
 
 import sys, string
 import pprint
@@ -288,16 +445,16 @@ class ContentGenerator(handler.ContentHandler):
     def startElement(self, name, attrs):
         if name == 'HL7Messages':
             self.format = attrs['MessageFormat']
-            print "format", self.format
+            #print "format", self.format
         elif self.format == 'ORUR01' and name == 'Message':
             self.msgid = attrs['MsgID']
-            print "msgid", self.msgid
+            #print "msgid", self.msgid
 
     def endElement(self, name):
         if self.format == 'ORUR01' and name == 'Message':
             self.chars = self.chars.replace("\r\n", "\n")
             self.chars = self.chars.replace("\r", "\n")
-            self.hl7 = parse(self.chars)
+            self.hl7 = cMessage(parse(self.chars))
             self.chars = ''
             self.hl7s[self.msgid] = self.hl7
 
@@ -312,4 +469,25 @@ if __name__ == '__main__':
     parser.setContentHandler(cg)
     parser.parse(sys.argv[1])
     #print pprint.pprint(cg.hl7s)
-    pprint.pprint(cg.hl7s['2']['OBX'])
+    #pprint.pprint(cg.hl7s['2']['OBX'])
+    keys = cg.hl7s.keys()
+    keys.sort()
+    for k in keys:
+        hl7 = cg.hl7s[k]
+
+        p = hl7.PID
+        o = hl7.ORC
+        print "patient", p.id, p.ext_id, p.alt_id, p.gender, p.dob, p.tel
+        print "order", o.request_id, o.order_id, o.provider
+
+        for (i, b) in enumerate(cg.hl7s['7'].OBR):
+            print "obr", i, b.idx, b.specimen_recv, b.results_reported_when, \
+                        b.copies_to, b.status, b.diagnostic
+
+        for (i, b) in enumerate(cg.hl7s['7'].OBX):
+            print "OBX", i, b.idx, repr(b.result), b.units, \
+                        b.range, b.abnormal, b.comment
+
+        print
+        print
+
