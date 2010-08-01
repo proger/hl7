@@ -107,8 +107,6 @@ __license__ = 'BSD'
 __copyright__ = 'Copyright 2009, John Paulett <john -at- 7oars.com>'
 __url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
 
-from xmllib import XMLParser, Error
-
 def ishl7(line):
     """Determines whether a *line* looks like an HL7 message.
     This method only does a cursory check and does not fully 
@@ -268,107 +266,6 @@ class _ParsePlan(object):
         ## When we have no separators and containers left, return None,
         ## which indicates that we have nothing further.
         return None
-
-
-
-class HL7XMLParser(XMLParser):
-
-    def __init__(self, **kw):
-        self.testdata = ""
-        self.hl7s = {}
-        self.format = None
-        XMLParser.__init__(self, **kw)
-
-    def handle_xml(self, encoding, standalone):
-        self.flush()
-        #print 'xml: encoding =',encoding,'standalone =',standalone
-
-    def handle_doctype(self, tag, pubid, syslit, data):
-        self.flush()
-        #print 'DOCTYPE:',tag, repr(data)
-
-    def handle_data(self, data):
-        self.testdata = self.testdata + data
-        if len(repr(self.testdata)) >= 70:
-            self.flush()
-
-    def flush(self):
-        data = self.testdata
-        if data:
-            self.testdata = ""
-            #print 'data:', repr(data)
-
-    def handle_cdata(self, data):
-        self.flush()
-        self.hl7 = parse(data)
-
-    def handle_proc(self, name, data):
-        self.flush()
-
-    def handle_comment(self, data):
-        self.flush()
-        r = repr(data)
-        if len(r) > 68:
-            r = r[:32] + '...' + r[-32:]
-
-    def unknown_starttag(self, tag, attrs):
-        self.flush()
-        if tag == 'HL7Messages':
-            self.format = attrs['MessageFormat']
-        elif self.format == 'ORUR01' and tag == 'Message':
-            self.msgid = attrs['MsgID']
-
-    def unknown_endtag(self, tag):
-        self.flush()
-        if self.format == 'ORUR01' and tag == 'Message':
-            self.hl7s[self.msgid] = self.hl7
-
-    def unknown_entityref(self, ref):
-        self.flush()
-
-    def unknown_charref(self, ref):
-        self.flush()
-
-    def close(self):
-        XMLParser.close(self)
-        self.flush()
-
-def test(args = None):
-    import sys, getopt
-    from time import time
-
-    if not args:
-        args = sys.argv[1:]
-
-    opts, args = getopt.getopt(args, 'st')
-    klass = HL7XMLParser
-
-    if args:
-        file = args[0]
-    else:
-        file = 'test.xml'
-
-    if file == '-':
-        f = sys.stdin
-    else:
-        try:
-            f = open(file, 'r')
-        except IOError, msg:
-            print file, ":", msg
-            sys.exit(1)
-
-    data = f.read()
-    if f is not sys.stdin:
-        f.close()
-
-    x = klass()
-    try:
-        for c in data:
-            x.feed(c)
-        x.close()
-    except Error, msg:
-        print msg
-        sys.exit(1)
 
 
 import sys, string
