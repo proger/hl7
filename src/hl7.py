@@ -199,8 +199,6 @@ class Message(Container):
                 res.append(i)
         if len(res) == 0:
             raise KeyError, "key %s not found in Message" % key
-        if key != 'OBR' and key != 'OBX' and len(res) == 1:
-            return res[0]
         return res
 
 class Segment(Container):
@@ -362,9 +360,18 @@ class cORC(Transform):
 def typetrans(obj, data, val):
     if val == u'NM':
         return float
-    elif val == u'FT':
+    elif val == u'DT' or val == u'TM': # date
+        return lambda x: datetransform(None, None, x)
+    elif val == u'TX': # text
         return unicode
-    raise KeyError, "OBX 002 unrecognised value type '%s'" % val
+    elif val == u'ST': # same as string (geez)
+        return unicode
+    elif val == u'FT': # formatted text: TODO - format it.  duh.
+        return unicode
+    elif val == u'CE': # coded element
+        return lambda x:x
+    raise KeyError, "OBX 002 unrecognised value type '%s' on %s" % \
+                (val, repr(data))
 
 def obxrestrans(obj, data, val):
     return obj.valuetype(val)
@@ -473,18 +480,21 @@ if __name__ == '__main__':
     keys = cg.hl7s.keys()
     keys.sort()
     for k in keys:
+        print "message", k
+
         hl7 = cg.hl7s[k]
 
         p = hl7.PID
-        o = hl7.ORC
         print "patient", p.id, p.ext_id, p.alt_id, p.gender, p.dob, p.tel
-        print "order", o.request_id, o.order_id, o.provider
 
-        for (i, b) in enumerate(cg.hl7s['7'].OBR):
-            print "obr", i, b.idx, b.specimen_recv, b.results_reported_when, \
+        for (i, o) in enumerate(hl7.ORC):
+            print "ORC", i, o.request_id, o.order_id, o.provider
+
+        for (i, b) in enumerate(hl7.OBR):
+            print "OBR", i, b.idx, b.specimen_recv, b.results_reported_when, \
                         b.copies_to, b.status, b.diagnostic
 
-        for (i, b) in enumerate(cg.hl7s['7'].OBX):
+        for (i, b) in enumerate(hl7.OBX):
             print "OBX", i, b.idx, repr(b.result), b.units, \
                         b.range, b.abnormal, b.comment
 
