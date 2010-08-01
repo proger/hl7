@@ -107,6 +107,8 @@ __license__ = 'BSD'
 __copyright__ = 'Copyright 2009, John Paulett <john -at- 7oars.com>'
 __url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
 
+from xmllib import XMLParser, Error
+
 def ishl7(line):
     """Determines whether a *line* looks like an HL7 message.
     This method only does a cursory check and does not fully 
@@ -189,8 +191,17 @@ class Message(Container):
     """Representation of an HL7 message. It contains a list
     of :cls:`hl7.Segment` instances.
     """
-    #def __getitem__(self, key):
-    #    return None
+    def __getitem__(self, key):
+        res = []
+        for i in self:
+            print type(i), type(i[0]), repr(i[0]), repr(key)
+            if i[0][0] == unicode(key):
+                res.append(i)
+        if len(res) == 0:
+            raise KeyError, "key %s not found in Message" % key
+        if len(res) == 1:
+            return res[0]
+        return res
 
 class Segment(Container):
     """Second level of an HL7 message, which represents an HL7 Segment.
@@ -209,7 +220,7 @@ def create_parse_plan(strmsg):
     the details stored within the message.
     """
     ## We will always use a carriage return to separate segments
-    separators = ['\r']
+    separators = ['\n']
     ## Parse out the other separators from the characters following
     ## MSH.  Currently we only go two-levels deep and ignore some
     ## details.
@@ -257,3 +268,151 @@ class _ParsePlan(object):
         ## When we have no separators and containers left, return None,
         ## which indicates that we have nothing further.
         return None
+
+
+
+class HL7XMLParser(XMLParser):
+
+    def __init__(self, **kw):
+        self.testdata = ""
+        self.hl7s = {}
+        self.format = None
+        XMLParser.__init__(self, **kw)
+
+    def handle_xml(self, encoding, standalone):
+        self.flush()
+        #print 'xml: encoding =',encoding,'standalone =',standalone
+
+    def handle_doctype(self, tag, pubid, syslit, data):
+        self.flush()
+        #print 'DOCTYPE:',tag, repr(data)
+
+    def handle_data(self, data):
+        self.testdata = self.testdata + data
+        if len(repr(self.testdata)) >= 70:
+            self.flush()
+
+    def flush(self):
+        data = self.testdata
+        if data:
+            self.testdata = ""
+            #print 'data:', repr(data)
+
+    def handle_cdata(self, data):
+        self.flush()
+        self.hl7 = parse(data)
+
+    def handle_proc(self, name, data):
+        self.flush()
+
+    def handle_comment(self, data):
+        self.flush()
+        r = repr(data)
+        if len(r) > 68:
+            r = r[:32] + '...' + r[-32:]
+
+    def unknown_starttag(self, tag, attrs):
+        self.flush()
+        if tag == 'HL7Messages':
+            self.format = attrs['MessageFormat']
+        elif self.format == 'ORUR01' and tag == 'Message':
+            self.msgid = attrs['MsgID']
+
+    def unknown_endtag(self, tag):
+        self.flush()
+        if self.format == 'ORUR01' and tag == 'Message':
+            self.hl7s[self.msgid] = self.hl7
+
+    def unknown_entityref(self, ref):
+        self.flush()
+
+    def unknown_charref(self, ref):
+        self.flush()
+
+    def close(self):
+        XMLParser.close(self)
+        self.flush()
+
+def test(args = None):
+    import sys, getopt
+    from time import time
+
+    if not args:
+        args = sys.argv[1:]
+
+    opts, args = getopt.getopt(args, 'st')
+    klass = HL7XMLParser
+
+    if args:
+        file = args[0]
+    else:
+        file = 'test.xml'
+
+    if file == '-':
+        f = sys.stdin
+    else:
+        try:
+            f = open(file, 'r')
+        except IOError, msg:
+            print file, ":", msg
+            sys.exit(1)
+
+    data = f.read()
+    if f is not sys.stdin:
+        f.close()
+
+    x = klass()
+    try:
+        for c in data:
+            x.feed(c)
+        x.close()
+    except Error, msg:
+        print msg
+        sys.exit(1)
+
+
+import sys, string
+import pprint
+
+from xml.sax import saxutils, handler, make_parser
+
+# --- The ContentHandler
+
+class ContentGenerator(handler.ContentHandler):
+
+    def __init__(self):
+        handler.ContentHandler.__init__(self)
+        self.hl7s = {}
+        self.format = None
+        self.chars = ''
+
+    # ContentHandler methods
+        
+    def startElement(self, name, attrs):
+        if name == 'HL7Messages':
+            self.format = attrs['MessageFormat']
+            print "format", self.format
+        elif self.format == 'ORUR01' and name == 'Message':
+            self.msgid = attrs['MsgID']
+            print "msgid", self.msgid
+
+    def endElement(self, name):
+        if self.format == 'ORUR01' and name == 'Message':
+            self.chars = self.chars.replace("\r\n", "\n")
+            self.chars = self.chars.replace("\r", "\n")
+            self.hl7 = parse(self.chars)
+            self.chars = ''
+            self.hl7s[self.msgid] = self.hl7
+
+    def characters(self, content):
+        self.chars += content
+
+# --- The main program
+
+if __name__ == '__main__':
+    parser = make_parser()
+    cg = ContentGenerator()
+    parser.setContentHandler(cg)
+    parser.parse(sys.argv[1])
+    #print pprint.pprint(cg.hl7s)
+    pprint.pprint(cg.hl7s['2']['OBX'])
