@@ -275,6 +275,7 @@ class _ParsePlan(object):
 
 
 def datetransform(obj, data, dt):
+    dt = dt[0]
     args = [dt[:4], dt[4:6], dt[6:8]]
     if len(dt) > 8:
         args.append(dt[8:10])
@@ -321,7 +322,9 @@ class Transform:
         typ = tf[1]
         if idx >= len(self.data):
             return None
-        val = self.fieldcheck(self.data[idx])
+        val = self.data[idx]
+        if typ is None:
+            val = self.fieldcheck(val)
         if typ and val is not None:
             val = typ(self, self.data, val)
         return val
@@ -377,6 +380,9 @@ class cORC(Transform):
 
 
 def typetrans(obj, data, val):
+    val = val[0]
+    if val == u'' and data[3][0] == u'HTML': # HTML-formatted
+        return unicode
     if val == u'NM':
         return float
     elif val == u'DT' or val == u'TM': # date
@@ -394,6 +400,7 @@ def typetrans(obj, data, val):
 
 
 def obxrestrans(obj, data, val):
+    val = val[0]
     return obj.valuetype(val)
 
 
@@ -472,12 +479,16 @@ class ContentGenerator(handler.ContentHandler):
         if name == 'HL7Messages':
             self.format = attrs['MessageFormat']
             #print "format", self.format
-        elif self.format == 'ORUR01' and name == 'Message':
+        elif (self.format == 'ORUR01' \
+              or self.format == 'ZLIL10') \
+            and name == 'Message':
             self.msgid = attrs['MsgID']
             #print "msgid", self.msgid
 
     def endElement(self, name):
-        if self.format == 'ORUR01' and name == 'Message':
+        if (self.format == 'ORUR01' \
+              or self.format == 'ZLIL10') \
+            and name == 'Message':
             self.chars = self.chars.replace("\r\n", "\n")
             self.chars = self.chars.replace("\r", "\n")
             self.hl7 = cMessage(parse(self.chars))
@@ -514,7 +525,7 @@ if __name__ == '__main__':
                         b.copies_to, b.status, b.diagnostic
 
         for (i, b) in enumerate(hl7.OBX):
-            print "OBX", i, b.idx, b[2], repr(b.result), b.units, \
+            print "OBX", i, b.idx, repr(b.result), b.units, \
                         b.range, b.abnormal, b.comment, b.sub_id
 
         print
