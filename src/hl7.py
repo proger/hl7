@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009 John Paulett (john -at- 7oars.com)
+# Copyright (C) 2010 Luke Kenneth Casson Leighton <lkcl@lkcl.net>
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
 """Simple library for parsing messages of Health Level 7 (HL7)
-version 2.x. 
+version 2.x (and version 3.x XML format)
 
 HL7 is a communication protocol and message format for 
 health care data. It is the de facto standard for transmitting data
@@ -101,18 +102,21 @@ HL7 References:
 """
 
 __version__ = '0.1.1~xml.1'
-__author__ = 'John Paulett, Luke Leighton'
-__email__ = 'john -at- 7oars.com, lkcl@lkcl.net'
+__author__ = 'John Paulett; Luke Leighton'
+__email__ = 'john -at- 7oars.com; lkcl@lkcl.net'
 __license__ = 'BSD'
 __copyright__ = """Copyright 2009, John Paulett <john -at- 7oars.com>
 Copyright (C) 2010, Luke Kenneth Casson Leighton <lkcl@lkcl.net>"""
-__url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
+# oops, has to be http://github.com/lkcl/hl7 for now until john merges/maintains
+#__url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
+__url__ = 'http://github.com/lkcl/hl7'
 
 from datetime import datetime
 import sys, string
 import pprint
 
-from xml.sax import saxutils, handler, make_parser
+from xml.sax import saxutils, handler
+from xml import sax
 
 
 def ishl7(line):
@@ -287,7 +291,7 @@ def datetransform(obj, data, dt):
     return datetime(*args)
 
 
-class TIter:
+class TIter(object):
     def __init__(self, d):
         self.cls = d.__class__
         self.i = d.data.__iter__()
@@ -298,7 +302,7 @@ class TIter:
         return self.cls(data)
 
 
-class Transform:
+class Transform(object):
     def __init__(self, data):
         self.data = data
 
@@ -446,7 +450,7 @@ class cOBR(Transform):
                 }
     
 
-class cMessage:
+class cMessage(object):
     def __init__(self, hl7):
         self.hl7 = hl7
     def get_pid(self):
@@ -465,12 +469,13 @@ class cMessage:
 
 # --- The ContentHandler
 
-class ContentGenerator(handler.ContentHandler):
+class HL7Handler(handler.ContentHandler):
 
-    def __init__(self):
+    def __init__(self, handler_class=None):
         handler.ContentHandler.__init__(self)
         self.hl7s = {}
         self.format = None
+        self.handler_class = handler_class
         self.chars = ''
 
     # ContentHandler methods
@@ -491,28 +496,35 @@ class ContentGenerator(handler.ContentHandler):
             and name == 'Message':
             self.chars = self.chars.replace("\r\n", "\n")
             self.chars = self.chars.replace("\r", "\n")
-            self.hl7 = cMessage(parse(self.chars))
+            msg = parse(self.chars)
             self.chars = ''
-            self.hl7s[self.msgid] = self.hl7
+            if self.handler_class:
+                msg = self.handler_class(msg)
+            self.hl7s[self.msgid] = msg
 
     def characters(self, content):
         self.chars += content
 
+def parse_hl7v3(fname, handler_class=None):
+    cg = HL7Handler(handler_class=handler_class)
+    sax.parse(fname, cg)
+    return cg.hl7s
+
+def parse_hl7v3_string(string, handler_class=None):
+    cg = HL7Handler(handler_class=handler_class)
+    sax.parseString(string, cg)
+    return cg.hl7s
+
 # --- The main program
 
 if __name__ == '__main__':
-    parser = make_parser()
-    cg = ContentGenerator()
-    parser.setContentHandler(cg)
-    parser.parse(sys.argv[1])
-    #print pprint.pprint(cg.hl7s)
-    #pprint.pprint(cg.hl7s['2']['OBX'])
-    keys = cg.hl7s.keys()
+    hl7s = parse_hl7v3(sys.argv[1], cMessage)
+    keys = hl7s.keys()
     keys.sort()
     for k in keys:
         print "message", k
 
-        hl7 = cg.hl7s[k]
+        hl7 = hl7s[k]
 
         p = hl7.PID
         print "patient", p.id, p.name, p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel

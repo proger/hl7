@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009 John Paulett (john -at- 7oars.com)
+# Copyright (C) 2010 Luke Kenneth Casson Leighton <lkcl@lkcl.net>
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,7 +15,7 @@ from distutils.core import setup
 setup(
     name = 'hl7',
     version = _hl7.__version__,
-    description = 'Python library parsing HL7 v2.x messages',
+    description = 'Python library parsing HL7 v2.x and v3.x messages',
     long_description = _hl7.__doc__,
     author = _hl7.__author__,
     author_email = _hl7.__email__,
