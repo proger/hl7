@@ -452,15 +452,15 @@ class cOBR(Transform):
 
 class cMessage(object):
     def __init__(self, hl7):
-        self.hl7 = hl7
+        self._hl7 = hl7
     def get_pid(self):
-        return cPID(self.hl7['PID'][0])
+        return cPID(self._hl7['PID'][0])
     def get_orc(self):
-        return cORC(self.hl7['ORC'])
+        return cORC(self._hl7['ORC'])
     def get_obr(self):
-        return cOBR(self.hl7['OBR'])
+        return cOBR(self._hl7['OBR'])
     def get_obx(self):
-        return cOBX(self.hl7['OBX'])
+        return cOBX(self._hl7['OBX'])
     PID = property(get_pid)
     ORC = property(get_orc)
     OBR = property(get_obr)
