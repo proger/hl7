@@ -343,6 +343,12 @@ class Transform(object):
         return val
     
 
+class cMSH(Transform):
+    """
+    """
+    transform = {}
+
+
 class cPID(Transform):
     """
    PID 002 (External patient ID / BC Personal Health Number [PHN] if known)
@@ -453,6 +459,8 @@ class cOBR(Transform):
 class cMessage(object):
     def __init__(self, hl7):
         self._hl7 = hl7
+    def get_msh(self):
+        return cMSH(self._hl7['MSH'][0])
     def get_pid(self):
         return cPID(self._hl7['PID'][0])
     def get_orc(self):
@@ -461,6 +469,7 @@ class cMessage(object):
         return cOBR(self._hl7['OBR'])
     def get_obx(self):
         return cOBX(self._hl7['OBX'])
+    MSH = property(get_msh)
     PID = property(get_pid)
     ORC = property(get_orc)
     OBR = property(get_obr)
