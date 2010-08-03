@@ -472,6 +472,10 @@ class cMessage(object):
 class HL7Handler(handler.ContentHandler):
 
     def __init__(self, handler_class=None):
+        """ NOTE: this class must be passed a handler_class to trigger
+            parsing of the individual HL7 messages.  otherwise it stores
+            the raw HL7 data, after parsing the XML wrapping.
+        """
         handler.ContentHandler.__init__(self)
         self.hl7s = {}
         self.format = None
@@ -496,10 +500,10 @@ class HL7Handler(handler.ContentHandler):
             and name == 'Message':
             self.chars = self.chars.replace("\r\n", "\n")
             self.chars = self.chars.replace("\r", "\n")
-            msg = parse(self.chars)
+            msg = self.chars
             self.chars = ''
             if self.handler_class:
-                msg = self.handler_class(msg)
+                msg = self.handler_class(parse(msg))
             self.hl7s[self.msgid] = msg
 
     def characters(self, content):
