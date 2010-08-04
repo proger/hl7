@@ -111,7 +111,7 @@ Copyright (C) 2010, Luke Kenneth Casson Leighton <lkcl@lkcl.net>"""
 #__url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
 __url__ = 'http://github.com/lkcl/hl7'
 
-from datetime import datetime
+import datetime
 import sys, string
 import pprint
 
@@ -287,8 +287,13 @@ def datetransform(obj, data, dt):
         args.append(dt[10:12])
     if len(dt) > 12:
         args.append(dt[12:14])
-    args = tuple(map(int, args))
-    return datetime(*args)
+    zargs = [0] * 7
+    zargs = zargs[len(args):]
+    args = args + zargs
+    args = map(int, args)
+    #args.append(datetime.tzinfo("+0000")) # TODO: extract possible timezone
+    args = tuple(args)
+    return datetime.datetime(*args)
 
 
 class TIter(object):
@@ -346,7 +351,12 @@ class Transform(object):
 class cMSH(Transform):
     """
     """
-    transform = {}
+    transform = {'sendingapp': (2, None),
+                 'lab': (3, None),
+                 'receivingapp': (4, None),
+                 'timestamp': (6, datetransform),
+                 'ctrl_id': (9, None),
+                }
 
 
 class cPID(Transform):
@@ -539,8 +549,11 @@ if __name__ == '__main__':
 
         hl7 = hl7s[k]
 
+        m = hl7.MSH
+        print "msg", m.ctrl_id, m.timestamp, m.lab, m.sendingapp, m.receivingapp
+
         p = hl7.PID
-        print "patient", p.id, p.name, p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel
+        print "patient", p.id, map(str, p.name), p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel
 
         for (i, o) in enumerate(hl7.ORC):
             print "ORC", i, o.request_id, o.order_id, o.provider
