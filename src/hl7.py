@@ -442,13 +442,14 @@ class cOBX(Transform):
                  'units': (6, None),
                  'range': (7, None),
                  'abnormal': (8, None),
-                 'comment': (3, None),
+                 'identifier': (3, None),
                 }
 
 
 class cOBR(Transform):
     """
     OBR 001 index?
+    OBR 003 filler order number
     OBR 007 (Observation Date-Time)
     OBR 014 (Specimen received Date timestamp),
     OBR 022 (Report Status Change timestamp),
@@ -459,6 +460,7 @@ class cOBR(Transform):
     transform = {'specimen_recv': (14, datetransform),
                  'results_reported_when': (22, datetransform),
                  'observation_when': (7, datetransform),
+                 'order_id': (3, None),
                  'copies_to': (28, None),
                  'idx': (1, None),
                  'status': (25, None),
@@ -484,6 +486,11 @@ class cMessage(object):
     ORC = property(get_orc)
     OBR = property(get_obr)
     OBX = property(get_obx)
+    def get_obr_by_order_id(self, order_id):
+        for obr in self.OBR:
+            if obr.order_id == order_id:
+                return obr
+        return None
 
 
 # --- The ContentHandler
@@ -559,12 +566,13 @@ if __name__ == '__main__':
             print "ORC", i, o.request_id, o.order_id, o.provider
 
         for (i, b) in enumerate(hl7.OBR):
-            print "OBR", i, b.idx, b.specimen_recv, b.results_reported_when, \
+            print "OBR", i, b.idx, b.order_id, \
+                        b.specimen_recv, b.results_reported_when, \
                         b.copies_to, b.status, b.diagnostic
 
         for (i, b) in enumerate(hl7.OBX):
             print "OBX", i, b.idx, repr(b.result), b.units, \
-                        b.range, b.abnormal, b.comment, b.sub_id
+                        b.range, b.abnormal, b.identifier, b.sub_id
 
         print
         print
