@@ -203,10 +203,11 @@ class Message(Container):
     """
     def __getitem__(self, key):
         res = []
-        for i in self:
+        for (i, seg) in enumerate(self):
             #print type(i), type(i[0]), repr(i[0]), repr(key)
-            if i[0][0] == unicode(key):
-                res.append(i)
+            if seg[0][0] == unicode(key):
+                seg._idx = i
+                res.append(seg)
         if len(res) == 0:
             raise KeyError, "key %s not found in Message" % key
         return res
@@ -299,17 +300,19 @@ def datetransform(obj, data, dt):
 class TIter(object):
     def __init__(self, d):
         self.cls = d.__class__
+        self._message = d._message
         self.i = d.data.__iter__()
     def __iter__(self):
         return self
     def next(self):
         data = self.i.next()
-        return self.cls(data)
+        return self.cls(self._message, data)
 
 
 class Transform(object):
-    def __init__(self, data):
+    def __init__(self, message, data):
         self.data = data
+        self._message = message
 
     def __iter__(self):
         return TIter(self).__iter__()
@@ -322,6 +325,12 @@ class Transform(object):
         return self.__class__(self.data[key])
 
     def __getattr__(self, key):
+        if key == 'NTE':
+            idx = self.data._idx
+            for (i, seg) in enumerate(self._message._hl7):
+                if i == idx+1:
+                    return cNTE(self._message, seg)
+            return None
         if isinstance(key, int):
             if key > len(self.data):
                 return None
@@ -347,6 +356,12 @@ class Transform(object):
             return val[0]
         return val
     
+
+class cNTE(Transform):
+    """
+    """
+    transform = { 'comment': (3, None),
+                }
 
 class cMSH(Transform):
     """
@@ -474,15 +489,15 @@ class cMessage(object):
     def __init__(self, hl7):
         self._hl7 = hl7
     def get_msh(self):
-        return cMSH(self._hl7['MSH'][0])
+        return cMSH(self, self._hl7['MSH'][0])
     def get_pid(self):
-        return cPID(self._hl7['PID'][0])
+        return cPID(self, self._hl7['PID'][0])
     def get_orc(self):
-        return cORC(self._hl7['ORC'])
+        return cORC(self, self._hl7['ORC'])
     def get_obr(self):
-        return cOBR(self._hl7['OBR'])
+        return cOBR(self, self._hl7['OBR'])
     def get_obx(self):
-        return cOBX(self._hl7['OBX'])
+        return cOBX(self, self._hl7['OBX'])
     MSH = property(get_msh)
     PID = property(get_pid)
     ORC = property(get_orc)
@@ -570,12 +585,14 @@ if __name__ == '__main__':
         for (i, b) in enumerate(hl7.OBR):
             print "OBR", i, b.idx, b.order_id, \
                         b.specimen_recv, b.results_reported_when, \
-                        b.copies_to, b.status, b.diagnostic
+                        b.copies_to, b.status, b.diagnostic, \
+                            b.NTE and b.NTE.comment
 
         for (i, b) in enumerate(hl7.OBX):
             print "OBX", i, b.idx, repr(b.result), b.units, \
                         b.range, b.abnormal, b.identifier, b.sub_id, \
-                        b.clin_when
+                        b.clin_when, \
+                        b.NTE and b.NTE.comment
 
         print
         print
