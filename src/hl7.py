@@ -328,9 +328,37 @@ class Transform(object):
         if key == 'NTE':
             idx = self.data._idx
             for (i, seg) in enumerate(self._message._hl7):
+                seg._idx = i
                 if i == idx+1:
                     return cNTE(self._message, seg)
             return None
+        elif key in [ 'OBR', 'ORC']:
+            sn = str(self.data[0])
+            if sn == 'ORC' and key == 'OBR':
+                return self._message.get_obr_by_order_id(self.order_id)
+            elif sn == 'OBR' and key == 'ORC':
+                return self._message.get_orc_by_order_id(self.order_id)
+            idx = self.data._idx
+            l = list(getattr(self._message, key))
+            l.reverse()
+            kls = {'OBR': cOBR, 'ORC': cORC}[key]
+            for seg in l:
+                if seg.data._idx <= idx and seg[0] == key:
+                    return seg #kls(self._message, seg)
+            return None
+        elif key == 'OBX':
+            idx = self.data._idx
+            res = []
+            for (i, seg) in enumerate(self._message._hl7):
+                seg._idx = i
+                if i <= idx:
+                    continue
+                sn = str(seg[0])
+                if sn not in ['OBX', 'NTE']:
+                    break
+                if sn == 'OBX':
+                    res.append(cOBX(self._message, seg))
+            return res
         if isinstance(key, int):
             if key > len(self.data):
                 return None
@@ -503,6 +531,12 @@ class cMessage(object):
     ORC = property(get_orc)
     OBR = property(get_obr)
     OBX = property(get_obx)
+    def get_orc_by_order_id(self, order_id):
+        for orc in self.ORC:
+            if orc.order_id == order_id:
+                return orc
+        return None
+
     def get_obr_by_order_id(self, order_id):
         for obr in self.OBR:
             if obr.order_id == order_id:
@@ -569,6 +603,7 @@ if __name__ == '__main__':
     keys = hl7s.keys()
     keys.sort()
     for k in keys:
+        print "-------"
         print "message", k
 
         hl7 = hl7s[k]
@@ -581,19 +616,21 @@ if __name__ == '__main__':
 
         for (i, o) in enumerate(hl7.ORC):
             print "ORC", i, o.request_id, o.order_id, o.provider
-
-        for (i, b) in enumerate(hl7.OBR):
+            b = o.OBR
             print "OBR", i, b.idx, b.order_id, \
                         b.specimen_recv, b.results_reported_when, \
                         b.copies_to, b.status, b.diagnostic, \
-                            b.NTE and b.NTE.comment
+                            b.NTE and b.NTE.comment, \
+                            "ORC order id", b.ORC and b.ORC.order_id
 
-        for (i, b) in enumerate(hl7.OBX):
-            print "OBX", i, b.idx, repr(b.result), b.units, \
-                        b.range, b.abnormal, b.identifier, b.sub_id, \
-                        b.clin_when, \
-                        b.NTE and b.NTE.comment
+            for (i, x) in enumerate(b.OBX):
+                print "\tOBX", i, x.idx, repr(x.result), x.units, \
+                            x.range, x.abnormal, x.identifier, x.sub_id, \
+                            x.clin_when, \
+                            x.NTE and x.NTE.comment, \
+                            "OBR idx", x.OBR and x.OBR.idx, \
+                            "ORC order id", x.ORC and x.ORC.order_id
 
-        print
-        print
+            print
+            print
 
