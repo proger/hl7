@@ -434,6 +434,7 @@ class cOBX(Transform):
     val_normal_range    OBX 007 (Reference Range)    
     abnormality_indicator   OBX 008 (Abnormal Flags)     
     note_provider   OBX NTE 003 (Comment)   to be renamed note_test_org
+    clin_when       OBX 014 Date/Time of observation
     """
     transform = {'result': (5, obxrestrans),
                  'valuetype': (2, typetrans),
@@ -443,6 +444,7 @@ class cOBX(Transform):
                  'range': (7, None),
                  'abnormal': (8, None),
                  'identifier': (3, None),
+                 'clin_when': (14, datetransform),
                 }
 
 
@@ -572,7 +574,8 @@ if __name__ == '__main__':
 
         for (i, b) in enumerate(hl7.OBX):
             print "OBX", i, b.idx, repr(b.result), b.units, \
-                        b.range, b.abnormal, b.identifier, b.sub_id
+                        b.range, b.abnormal, b.identifier, b.sub_id, \
+                        b.clin_when
 
         print
         print
