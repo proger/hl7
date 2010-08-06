@@ -1,5 +1,9 @@
 import datetime
 
+def numtransform(obj, data, dt):
+    dt = dt[0]
+    return float(dt)
+    
 def datetransform(obj, data, dt):
     dt = dt[0]
     args = [dt[:4], dt[4:6], dt[6:8]]
