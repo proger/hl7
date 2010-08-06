@@ -312,9 +312,11 @@ class Transform(object):
         elif key in [ 'OBR', 'ORC']:
             sn = str(self.data[0])
             if sn == 'ORC' and key == 'OBR':
-                return self._message.get_obr_by_order_id(self.order_id)
+                return self._message.get_obr_by_order_id(
+                                    self.filler_order_number)
             elif sn == 'OBR' and key == 'ORC':
-                return self._message.get_orc_by_order_id(self.order_id)
+                return self._message.get_orc_by_order_id(
+                                    self.filler_order_number)
             idx = self.data._idx
             l = list(getattr(self._message, key))
             l.reverse()
@@ -412,7 +414,6 @@ class cORC(Transform):
                 lab performing tests / Accession number-test code-tiebreaker
     """
     transform = {'request_id': (4, None),
-                 'order_id': (3, None),
                  'provider': (12, None),
                 }
 
@@ -452,15 +453,7 @@ class cOBR(Transform):
     OBR 025 (Result Status), 
     OBR 024 "Diagnostic Service Section" 
     """
-    transform = {'specimen_recv': (14, datetransform),
-                 'results_reported_when': (22, datetransform),
-                 'observation_when': (7, datetransform),
-                 'order_id': (3, None),
-                 'copies_to': (28, None),
-                 'idx': (1, None),
-                 'status': (25, None),
-                 'diagnostic': (24, None),
-                }
+    transform = { }
     
 
 class cMessage(object):
@@ -484,13 +477,13 @@ class cMessage(object):
     OBX = property(get_obx)
     def get_orc_by_order_id(self, order_id):
         for orc in self.ORC:
-            if orc.order_id == order_id:
+            if orc.filler_order_number == order_id:
                 return orc
         return None
 
     def get_obr_by_order_id(self, order_id):
         for obr in self.OBR:
-            if obr.order_id == order_id:
+            if obr.filler_order_number == order_id:
                 return obr
         return None
 
@@ -572,19 +565,21 @@ if __name__ == '__main__':
             print "ORC", i, o.request_id, o.filler_order_number, \
                             o.ordering_provider
             b = o.OBR
-            print "OBR", i, b.set_id, b.order_id, \
-                        b.specimen_recv, b.results_reported_when, \
-                        b.copies_to, b.status, b.diagnostic, \
+            print "OBR", i, b.set_id, b.filler_order_number, \
+                        b.specimen_received_datetime, \
+                        b.results_rptstatus_chng_datetime, \
+                        b.result_copies_to, b.result_status, \
+                        b.diagnostic_serv_sect_id, \
                             b.NTE and b.NTE.comment, \
-                            "ORC order id", b.ORC and b.ORC.order_id
+                            "ORC order id", b.ORC and b.ORC.filler_order_number
 
             for (i, x) in enumerate(b.OBX):
                 print "\tOBX", i, x.idx, repr(x.result), x.units, \
                             x.range, x.abnormal, x.identifier, x.sub_id, \
                             x.clin_when, \
                             x.NTE and x.NTE.comment, \
-                            "OBR idx", x.OBR and x.OBR.idx, \
-                            "ORC order id", x.ORC and x.ORC.order_id
+                            "OBR idx", x.OBR and x.OBR.set_id, \
+                            "ORC order id", x.ORC and x.ORC.filler_order_number
 
             print
             print
