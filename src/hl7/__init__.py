@@ -1,4 +1,4 @@
-__version__ = '0.1.1~xml.2'
+__version__ = '0.1.1~xml.3'
 __author__ = 'John Paulett; Luke Leighton'
 __email__ = 'john -at- 7oars.com; lkcl@lkcl.net'
 __license__ = 'BSD'
