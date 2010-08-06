@@ -289,7 +289,7 @@ class Transform(object):
         self.data = data
         self._message = message
         self.segname = segname
-        self._transform = segment_revs[message.version].transforms[self.segname]
+        self._transform = segment_revs[message._version].transforms[self.segname]
 
     def __iter__(self):
         return TIter(self).__iter__()
@@ -436,7 +436,7 @@ class cOBR(Transform):
 class cMessage(object):
     def __init__(self, hl7, version):
         self._hl7 = hl7
-        self.version = version
+        self._version = version
     def get_msh(self):
         return cMSH(self, self._hl7['MSH'][0], 'MSH')
     def get_pid(self):
