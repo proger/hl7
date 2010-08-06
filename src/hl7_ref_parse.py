@@ -59,8 +59,10 @@ def parse_segment(fname):
 
 def write_segments(ref, segments):
     f = open("hl7/segments%s.py" % ref, "w")
+    f.write("from hl7util import *\n")
+    f.write("transforms = {\\\n")
     for seg in segments:
-        txt = "%s_transform = {\\\n" % seg.name.lower()
+        txt = "    '%s': {\\\n" % seg.name.upper()
         for field in seg.fields:
             idx = int(field['name'].split(".")[1])
             fieldname = ''
@@ -69,19 +71,25 @@ def write_segments(ref, segments):
                 if c.isalnum():
                     fieldname += c
                     prev_space = False
+                elif c == '#':
+                    fieldname += 'num'
+                    prev_space = False
+                elif c == '-' and not prev_space:
+                    fieldname += '_'
+                    prev_space = True
                 elif c == ' ' and not prev_space:
                     fieldname += "_"
                     prev_space = True
-                else:
-                    prev_space = False
+
             datatype = field['datatype']
             if datatype in ['DT', 'TM']:
                 datatype = 'datetransform'
             else:
                 datatype = 'None'
-            txt += "         '%s': (%d, %s),\n" % (fieldname, idx, datatype)
-        txt += "               }\n\n"
+            txt += "        '%s': (%d, %s),\n" % (fieldname, idx, datatype)
+        txt += "},\n"
         f.write(txt)
+    f.write("}\n")
     f.close()
 
 def parse_reference(ref):

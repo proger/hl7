@@ -12,4 +12,5 @@ segment_revs = {'2.1': segments21,
                     '2.4': segments24,
                     '2.5': segments25,
                    }
+__all__ = ['segment_revs']
 

@@ -1,3 +1,4 @@
+from hl7util import *
 transforms = {\
     'EQU': {\
         'equipment_instance_identifier': (1, None),

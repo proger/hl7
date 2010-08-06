@@ -101,16 +101,6 @@ HL7 References:
  * http://comstock-software.com/blogs/ifaces/2007/01/hl7-message-wrappers.html 
 """
 
-__version__ = '0.1.1~xml.2'
-__author__ = 'John Paulett; Luke Leighton'
-__email__ = 'john -at- 7oars.com; lkcl@lkcl.net'
-__license__ = 'BSD'
-__copyright__ = """Copyright 2009, John Paulett <john -at- 7oars.com>
-Copyright (C) 2010, Luke Kenneth Casson Leighton <lkcl@lkcl.net>"""
-# oops, has to be http://github.com/lkcl/hl7 for now until john merges/maintains
-#__url__ = 'http://www.bitbucket.org/johnpaulett/python-hl7/wiki/Home'
-__url__ = 'http://github.com/lkcl/hl7'
-
 import datetime
 import sys, string
 import pprint
@@ -118,6 +108,8 @@ import pprint
 from xml.sax import saxutils, handler
 from xml import sax
 
+from segments import segment_revs
+from hl7util import *
 
 def ishl7(line):
     """Determines whether a *line* looks like an HL7 message.
@@ -279,24 +271,6 @@ class _ParsePlan(object):
         return None
 
 
-def datetransform(obj, data, dt):
-    dt = dt[0]
-    args = [dt[:4], dt[4:6], dt[6:8]]
-    if len(dt) > 8:
-        args.append(dt[8:10])
-    if len(dt) > 10:
-        args.append(dt[10:12])
-    if len(dt) > 12:
-        args.append(dt[12:14])
-    zargs = [0] * 7
-    zargs = zargs[len(args):]
-    args = args + zargs
-    args = map(int, args)
-    #args.append(datetime.tzinfo("+0000")) # TODO: extract possible timezone
-    args = tuple(args)
-    return datetime.datetime(*args)
-
-
 class TIter(object):
     def __init__(self, d):
         self.cls = d.__class__
@@ -313,6 +287,8 @@ class Transform(object):
     def __init__(self, message, data):
         self.data = data
         self._message = message
+        segname = str(self.data[0][0])
+        self._transform = segment_revs[message.version].transforms[segname]
 
     def __iter__(self):
         return TIter(self).__iter__()
@@ -363,7 +339,7 @@ class Transform(object):
             if key > len(self.data):
                 return None
             return self.fieldcheck(self.data[key])
-        tf = self.transform[key]
+        tf = self.get_transform(key)
         idx = tf[0]
         typ = tf[1]
         if idx >= len(self.data):
@@ -384,6 +360,10 @@ class Transform(object):
             return val[0]
         return val
     
+    def get_transform(self, key):
+        if self.transform.has_key(key):
+            return self.transform[key]
+        return self._transform[key]
 
 class cNTE(Transform):
     """
@@ -442,31 +422,6 @@ class cORC(Transform):
                 }
 
 
-def typetrans(obj, data, val):
-    val = val[0]
-    if val == u'' and data[3][0] == u'HTML': # HTML-formatted
-        return unicode
-    if val == u'NM':
-        return float
-    elif val == u'DT' or val == u'TM': # date
-        return lambda x: datetransform(None, None, x)
-    elif val == u'TX': # text
-        return unicode
-    elif val == u'ST': # same as string (geez)
-        return unicode
-    elif val == u'FT': # formatted text: TODO - format it.  duh.
-        return unicode
-    elif val == u'CE': # coded element
-        return lambda x:x
-    raise KeyError, "OBX 002 unrecognised value type '%s' on %s" % \
-                (val, repr(data))
-
-
-def obxrestrans(obj, data, val):
-    val = val[0]
-    return obj.valuetype(val)
-
-
 class cOBX(Transform):
     """
     integer?    OBX 001 index?
@@ -514,8 +469,9 @@ class cOBR(Transform):
     
 
 class cMessage(object):
-    def __init__(self, hl7):
+    def __init__(self, hl7, version):
         self._hl7 = hl7
+        self.version = version
     def get_msh(self):
         return cMSH(self, self._hl7['MSH'][0])
     def get_pid(self):
@@ -564,6 +520,7 @@ class HL7Handler(handler.ContentHandler):
     def startElement(self, name, attrs):
         if name == 'HL7Messages':
             self.format = attrs['MessageFormat']
+            self.version = attrs['Version']
             #print "format", self.format
         elif (self.format == 'ORUR01' \
               or self.format == 'ZLIL10') \
@@ -580,7 +537,7 @@ class HL7Handler(handler.ContentHandler):
             msg = self.chars
             self.chars = ''
             if self.handler_class:
-                msg = self.handler_class(parse(msg))
+                msg = self.handler_class(parse(msg), self.version)
             self.hl7s[self.msgid] = msg
 
     def characters(self, content):
@@ -615,9 +572,10 @@ if __name__ == '__main__':
         print "patient", p.id, map(str, p.name), p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel
 
         for (i, o) in enumerate(hl7.ORC):
-            print "ORC", i, o.request_id, o.order_id, o.provider
+            print "ORC", i, o.request_id, o.filler_order_number, \
+                            o.ordering_provider
             b = o.OBR
-            print "OBR", i, b.idx, b.order_id, \
+            print "OBR", i, b.set_id, b.order_id, \
                         b.specimen_recv, b.results_reported_when, \
                         b.copies_to, b.status, b.diagnostic, \
                             b.NTE and b.NTE.comment, \
