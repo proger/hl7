@@ -381,30 +381,11 @@ class cMSH(Transform):
 
 class cPID(Transform):
     """
-   PID 002 (External patient ID / BC Personal Health Number [PHN] if known)
-       -> other_info
-   PID 003 ( Addn Patient ID / Additional Patient Identifier; MRN nonunique)
-       -> ? concatenate into other_info using internal delimiter ^ ?
-   PID 004 (Alternate External Patient ID / e.g. Chart number)
-   PID 005 (Patient Name / Last^First^Middle (as supplied))
-       -> substring1 into lastnames
-       -> concatenate substrings2,3 into firstnames (space-delimited)
-   PID 007 (Date of Birth YYYYMMDD (null if unknown))
-       -> dob
-   PID 013 (Home Phone / May be partial and irregularly formatted)
-       -> ? concatenate into other_info using internal delimiter ^ ?
-   PID 008 (Sex / Gender of patient F/M/U-unknown) -> gender
-
     """
-    transform = {'idx': (1, None),
-                 'ext_id': (2, None),
-                 'id': (3, None),
-                 'dob': (7, datetransform),
-                 'name': (5, None),
-                 'address': (11, None),
-                 'alt_id': (4, None),
-                 'gender': (8, None),
-                 'tel': (13, None),
+    transform = { 'patients_name': (5, None),
+                  'datetime_of_birth': (7, datetransform),
+                  'patient_id_external_id': (2, None),
+                  'patient_id_internal_id': (3, None),
                 }
 
 
@@ -420,25 +401,22 @@ class cORC(Transform):
 
 class cOBX(Transform):
     """
-    integer?    OBX 001 index?
-                OBX 004 (Observation Sub ID)
-    val_num      HL7 OBX 005 (Result)    if OBX 002 (Value Type) == NM
-    val_alpha   HL7 OBX 005 (Result)    if OBX 002 (Value Type) == FT
-    val_unit    HL7 OBX 006 "Units"      
-    val_normal_range    OBX 007 (Reference Range)    
-    abnormality_indicator   OBX 008 (Abnormal Flags)     
-    note_provider   OBX NTE 003 (Comment)   to be renamed note_test_org
-    clin_when       OBX 014 Date/Time of observation
     """
     transform = {'result': (5, obxrestrans),
                  'valuetype': (2, typetrans),
+                 'reference_range': (7, None), # change of name from 2.1 to 2.3
                  'sub_id': (4, None),
-                 'idx': (1, None),
-                 'units': (6, None),
-                 'range': (7, None),
-                 'abnormal': (8, None),
                  'identifier': (3, None),
-                 'clin_when': (14, datetransform),
+        # MORONS! *sigh*... additional fields not listed,
+        # but present in live data, contrary to spec...
+        'effective_date_of_reference_range': (12, datetransform),
+        'user_defined_access_checks': (13, None),
+        'datetime_of_the_observation': (14, datetransform),
+        'producers_id': (15, None),
+        'responsible_observer': (16, None),
+        'observation_method': (17, None),
+        'equipment_instance_identifier': (18, None),
+        'datetime_of_the_analysis': (19, datetransform),
                 }
 
 
@@ -559,7 +537,10 @@ if __name__ == '__main__':
                 m.receiving_application
 
         p = hl7.PID
-        print "patient", p.id, map(str, p.name), p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel
+        print "patient", p.patient_id_internal_id, map(str, p.patients_name), \
+                p.patient_id_external_id, p.alternate_patient_id, \
+                p.sex, p.datetime_of_birth, p.patient_address, \
+                p.phone_number_home
 
         for (i, o) in enumerate(hl7.ORC):
             print "ORC", i, o.request_id, o.filler_order_number, \
@@ -574,9 +555,10 @@ if __name__ == '__main__':
                             "ORC order id", b.ORC and b.ORC.filler_order_number
 
             for (i, x) in enumerate(b.OBX):
-                print "\tOBX", i, x.idx, repr(x.result), x.units, \
-                            x.range, x.abnormal, x.identifier, x.sub_id, \
-                            x.clin_when, \
+                print "\tOBX", i, x.set_id, repr(x.result), x.units, \
+                            x.reference_range, x.abnormal_flags, \
+                            x.identifier, x.observation_sub_id, \
+                            x.datetime_of_the_observation, \
                             x.NTE and x.NTE.comment, \
                             "OBR idx", x.OBR and x.OBR.set_id, \
                             "ORC order id", x.ORC and x.ORC.filler_order_number
