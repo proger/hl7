@@ -406,7 +406,6 @@ class cOBX(Transform):
                  'valuetype': (2, typetrans),
                  'reference_range': (7, None), # change of name from 2.1 to 2.3
                  'sub_id': (4, None),
-                 'identifier': (3, None),
         # MORONS! *sigh*... additional fields not listed,
         # but present in live data, contrary to spec...
         'effective_date_of_reference_range': (12, datetransform),
@@ -557,7 +556,7 @@ if __name__ == '__main__':
             for (i, x) in enumerate(b.OBX):
                 print "\tOBX", i, x.set_id, repr(x.result), x.units, \
                             x.reference_range, x.abnormal_flags, \
-                            x.identifier, x.observation_sub_id, \
+                            x.observation_identifier, x.observation_sub_id, \
                             x.datetime_of_the_observation, \
                             x.NTE and x.NTE.comment, \
                             "OBR idx", x.OBR and x.OBR.set_id, \
