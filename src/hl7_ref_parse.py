@@ -65,6 +65,8 @@ def write_segments(ref, segments):
         txt = "    '%s': {\\\n" % seg.name.upper()
         for field in seg.fields:
             idx = int(field['name'].split(".")[1])
+            if seg.name == 'MSH': # due to implementation enc chars are skipped
+                idx -= 1
             fieldname = ''
             prev_space = False
             for c in field['description'].lower().strip():
@@ -82,7 +84,7 @@ def write_segments(ref, segments):
                     prev_space = True
 
             datatype = field['datatype']
-            if datatype in ['DT', 'TM']:
+            if datatype in ['DT', 'TM', 'TS']:
                 datatype = 'datetransform'
             else:
                 datatype = 'None'

@@ -275,20 +275,21 @@ class TIter(object):
     def __init__(self, d):
         self.cls = d.__class__
         self._message = d._message
+        self._segname = d.segname
         self.i = d.data.__iter__()
     def __iter__(self):
         return self
     def next(self):
         data = self.i.next()
-        return self.cls(self._message, data)
+        return self.cls(self._message, data, self._segname)
 
 
 class Transform(object):
-    def __init__(self, message, data):
+    def __init__(self, message, data, segname):
         self.data = data
         self._message = message
-        segname = str(self.data[0][0])
-        self._transform = segment_revs[message.version].transforms[segname]
+        self.segname = segname
+        self._transform = segment_revs[message.version].transforms[self.segname]
 
     def __iter__(self):
         return TIter(self).__iter__()
@@ -306,7 +307,7 @@ class Transform(object):
             for (i, seg) in enumerate(self._message._hl7):
                 seg._idx = i
                 if i == idx+1:
-                    return cNTE(self._message, seg)
+                    return cNTE(self._message, seg, 'NTE')
             return None
         elif key in [ 'OBR', 'ORC']:
             sn = str(self.data[0])
@@ -333,7 +334,7 @@ class Transform(object):
                 if sn not in ['OBX', 'NTE']:
                     break
                 if sn == 'OBX':
-                    res.append(cOBX(self._message, seg))
+                    res.append(cOBX(self._message, seg, 'OBX'))
             return res
         if isinstance(key, int):
             if key > len(self.data):
@@ -368,18 +369,12 @@ class Transform(object):
 class cNTE(Transform):
     """
     """
-    transform = { 'comment': (3, None),
-                }
+    transform = {}
 
 class cMSH(Transform):
     """
     """
-    transform = {'sendingapp': (2, None),
-                 'lab': (3, None),
-                 'receivingapp': (4, None),
-                 'timestamp': (6, datetransform),
-                 'ctrl_id': (9, None),
-                }
+    transform = {}
 
 
 class cPID(Transform):
@@ -473,15 +468,15 @@ class cMessage(object):
         self._hl7 = hl7
         self.version = version
     def get_msh(self):
-        return cMSH(self, self._hl7['MSH'][0])
+        return cMSH(self, self._hl7['MSH'][0], 'MSH')
     def get_pid(self):
-        return cPID(self, self._hl7['PID'][0])
+        return cPID(self, self._hl7['PID'][0], 'PID')
     def get_orc(self):
-        return cORC(self, self._hl7['ORC'])
+        return cORC(self, self._hl7['ORC'], 'ORC')
     def get_obr(self):
-        return cOBR(self, self._hl7['OBR'])
+        return cOBR(self, self._hl7['OBR'], 'OBR')
     def get_obx(self):
-        return cOBX(self, self._hl7['OBX'])
+        return cOBX(self, self._hl7['OBX'], 'OBX')
     MSH = property(get_msh)
     PID = property(get_pid)
     ORC = property(get_orc)
@@ -566,7 +561,9 @@ if __name__ == '__main__':
         hl7 = hl7s[k]
 
         m = hl7.MSH
-        print "msg", m.ctrl_id, m.timestamp, m.lab, m.sendingapp, m.receivingapp
+        print "msg", m.message_control_id, m.datetime_of_message, \
+                m.sending_facility, m.sending_application, \
+                m.receiving_application
 
         p = hl7.PID
         print "patient", p.id, map(str, p.name), p.ext_id, p.alt_id, p.gender, p.dob, p.address, p.tel
