@@ -65,7 +65,7 @@ def write_composites(ref, segments, fieldtransforms):
     for seg in segments:
         txt = "    '%s': {\\\n" % seg.name.upper()
         for field in seg.fields:
-            idx = int(field['name'].split(".")[1])
+            idx = int(field['name'].split(".")[1]) - 1
             fieldname = ''
             prev_space = False
             for c in field['description'].lower().strip():

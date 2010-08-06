@@ -534,10 +534,12 @@ if __name__ == '__main__':
                 m.receiving_application
 
         p = hl7.PID
-        print "patient", p.patient_id_internal_id, p.patients_name, \
+        print "patient", p.patient_id_internal_id, \
+                [str(p.patients_name.family_name),
+                 str(p.patients_name.given_name)], \
                 p.patient_id_external_id, p.alternate_patient_id, \
                 p.sex, p.datetime_of_birth, p.patient_address, \
-                p.phone_number_home #, p.patients_name
+                p.phone_number_home
 
         for (i, o) in enumerate(hl7.ORC):
             print "ORC", i, o.request_id, o.filler_order_number, \

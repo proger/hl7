@@ -18,7 +18,8 @@ class FieldTransform(object):
         self._message = obj._message
         self._version = obj._message._version
         self.compname = compname
-        self._transform = composite_revs[self._version].transforms[self.compname]
+        cr = composite_revs[self._version]
+        self._transform = cr.transforms[self.compname]
 
     def __cmp__(self, data):
         return cmp(self.data, data.data)
@@ -63,8 +64,6 @@ class FieldTransform(object):
         return val
 
     def get_transform(self, key):
-        if self.transform.has_key(key):
-            return self.transform[key]
         return self._transform[key]
 
 def fieldtransform(obj, data, val, compname):
