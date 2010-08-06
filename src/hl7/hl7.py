@@ -511,17 +511,17 @@ class HL7Handler(handler.ContentHandler):
 def parse_hl7v3(fname, handler_class=None):
     cg = HL7Handler(handler_class=handler_class)
     sax.parse(fname, cg)
-    return cg.hl7s
+    return cg.hl7s, cg.version
 
 def parse_hl7v3_string(string, handler_class=None):
     cg = HL7Handler(handler_class=handler_class)
     sax.parseString(string, cg)
-    return cg.hl7s
+    return cg.hl7s, cg.version
 
 # --- The main program
 
 if __name__ == '__main__':
-    hl7s = parse_hl7v3(sys.argv[1], cMessage)
+    hl7s, version = parse_hl7v3(sys.argv[1], cMessage)
     keys = hl7s.keys()
     keys.sort()
     for k in keys:
