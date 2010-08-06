@@ -12,20 +12,27 @@ class TIter(object):
         return self.cls(self._message, data, self._segname)
 
 class FieldTransform(object):
-    def __init__(self, obj, data, compname):
+    def __init__(self, obj, data, segname):
         from composites import composite_revs
         self.data = data
-        self._message = obj._message
-        self._version = obj._message._version
-        self.compname = compname
+        self._message = obj
+        self._version = obj._version
+        self.segname = segname
         cr = composite_revs[self._version]
-        self._transform = cr.transforms[self.compname]
+        self._transform = cr.transforms[self.segname]
 
     def __cmp__(self, data):
         return cmp(self.data, data.data)
 
     def __str__(self):
         return str(self.data)
+
+    def __getslice__(self, i, j):
+        i = max(i, 0); j = max(j, 0)
+        return self.data[i:j]
+
+    def __len__(self):
+        return len(self.data)
 
     def __iter__(self):
         return TIter(self).__iter__()
@@ -72,7 +79,9 @@ def fieldtransform(obj, data, val, compname):
             return None
         if len(val) == 1 and len(val[0]) == 0:
             return None
-    return FieldTransform(obj, val, compname)
+        if len(val) == 1:
+            return FieldTransform(obj._message, val, compname)[0]
+    return FieldTransform(obj._message, val, compname)
 
 import composites
 composites.fieldtransform = fieldtransform
