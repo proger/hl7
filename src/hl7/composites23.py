@@ -1,7 +1,8 @@
-from hl7util import *
+from hl7trans import *
+import compositetrans
 transforms = {\
     'SI': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'DLN': {\
         'license_number': (1, None),
@@ -9,18 +10,18 @@ transforms = {\
         'expiration_date': (3, datetransform),
 },
     'ST': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TM': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'QIP': {\
         'field_name': (1, None),
-        'values': (2, fieldtransform),
+        'values': (2, compositetrans.fieldtransformQIP_VALUES),
 },
     'RP': {\
         'pointer': (1, None),
-        'application_id': (2, fieldtransform),
+        'application_id': (2, compositetrans.fieldtransformHD),
         'type_of_data': (3, None),
         'sub_type': (4, None),
 },
@@ -31,17 +32,17 @@ transforms = {\
         'universal_id_type': (4, None),
 },
     'NM': {\
-        'value': (1, fieldtransform),
+        'value': (1, numtransform),
 },
     'CM_MSH': {\
         'type': (1, None),
         'event': (2, None),
 },
     'TN': {\
-        'number': (1, fieldtransform),
+        'number': (1, None),
 },
     'OH': {\
-        'office_day': (1, fieldtransform),
+        'office_day': (1, None),
         'office_start_time': (2, datetransform),
         'office_end_time': (3, datetransform),
         'provider_start_time': (4, datetransform),
@@ -62,21 +63,21 @@ transforms = {\
         'prefix': (6, None),
         'degree': (7, None),
         'source_table': (8, None),
-        'assigning_authority': (9, fieldtransform),
+        'assigning_authority': (9, compositetrans.fieldtransformHD),
         'name_type_code': (10, None),
         'identifier_check_digit': (11, None),
         'code_identifying_the_check_digit_scheme_employed': (12, None),
         'identifier_type_code': (13, None),
-        'assigning_facility': (14, fieldtransform),
+        'assigning_facility': (14, compositetrans.fieldtransformHD),
 },
     'DT': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TS': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TX': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'PPN': {\
         'id_number': (1, None),
@@ -87,12 +88,12 @@ transforms = {\
         'prefix': (6, None),
         'degree': (7, None),
         'source_table': (8, None),
-        'assigning_authority': (9, fieldtransform),
+        'assigning_authority': (9, compositetrans.fieldtransformHD),
         'name_type_code': (10, None),
         'identifier_check_digit': (11, None),
         'code_identifying_check_digit_scheme_employed': (12, None),
         'identifier_type_code': (13, None),
-        'assigning_facility': (14, fieldtransform),
+        'assigning_facility': (14, compositetrans.fieldtransformHD),
         'datetime_action_performed': (15, datetransform),
 },
     'AD': {\
@@ -110,18 +111,18 @@ transforms = {\
         'parameter_value': (2, None),
 },
     'SN': {\
-        'comparator': (1, fieldtransform),
+        'comparator': (1, None),
         'num1': (2, numtransform),
-        'separatorsuffix': (3, fieldtransform),
+        'separatorsuffix': (3, None),
         'num2': (4, numtransform),
 },
     'CX': {\
         'id': (1, None),
         'check_digit': (2, None),
         'code_identifying_the_check_digit_scheme_employed': (3, None),
-        'assigning_authority': (4, fieldtransform),
+        'assigning_authority': (4, compositetrans.fieldtransformHD),
         'identifier_type_code': (5, None),
-        'assigning_facility': (6, fieldtransform),
+        'assigning_facility': (6, compositetrans.fieldtransformHD),
 },
     'XAD': {\
         'street_address': (1, None),
@@ -148,7 +149,7 @@ transforms = {\
         'job_class': (2, None),
 },
     'TQ': {\
-        'quantity': (1, fieldtransform),
+        'quantity': (1, compositetrans.fieldtransformCQ),
         'interval': (2, None),
         'duration': (3, None),
         'start_datetime': (4, datetransform),
@@ -160,18 +161,18 @@ transforms = {\
         'order_sequencing': (10, None),
 },
     'ID': {\
-        'id': (1, fieldtransform),
+        'id': (1, None),
 },
     'PT': {\
         'processing_type': (1, None),
         'processing_mode': (2, None),
 },
     'CP': {\
-        'price': (1, fieldtransform),
+        'price': (1, compositetrans.fieldtransformMO),
         'price_type': (2, None),
         'from_value': (3, numtransform),
         'to_value': (4, numtransform),
-        'range_units': (5, fieldtransform),
+        'range_units': (5, compositetrans.fieldtransformCE),
         'range_type': (6, None),
 },
     'PN': {\
@@ -198,17 +199,17 @@ transforms = {\
         'id_number': (3, numtransform),
         'check_digit': (4, numtransform),
         'code_identifying_the_check_digit': (5, None),
-        'assigning_authority': (6, fieldtransform),
+        'assigning_authority': (6, compositetrans.fieldtransformHD),
         'identifier_type_code': (7, None),
-        'assigned_facility': (8, fieldtransform),
+        'assigned_facility': (8, compositetrans.fieldtransformHD),
 },
     'CM': {\
-        'field1': (1, fieldtransform),
-        'field2': (2, fieldtransform),
-        'field3': (3, fieldtransform),
-        'field4': (4, fieldtransform),
-        'field5': (5, fieldtransform),
-        'field6': (6, fieldtransform),
+        'field1': (1, None),
+        'field2': (2, None),
+        'field3': (3, None),
+        'field4': (4, None),
+        'field5': (5, None),
+        'field6': (6, None),
 },
     'CD_INFO': {\
         'channel_number': (1, numtransform),
@@ -216,7 +217,7 @@ transforms = {\
 },
     'CQ': {\
         'quantity': (1, numtransform),
-        'units': (2, fieldtransform),
+        'units': (2, compositetrans.fieldtransformCE),
 },
     'XTN': {\
         'number': (1, None),
@@ -244,7 +245,7 @@ transforms = {\
         'prefix': (6, None),
         'degree': (7, None),
         'source_table': (8, None),
-        'assigning_authority': (9, fieldtransform),
+        'assigning_authority': (9, compositetrans.fieldtransformHD),
 },
     'CE': {\
         'identifier': (1, None),
@@ -258,7 +259,7 @@ transforms = {\
         'id_number': (1, numtransform),
         'check_digit': (2, numtransform),
         'code_identifying_the_check_digit': (3, None),
-        'assigning_authority': (4, fieldtransform),
+        'assigning_authority': (4, compositetrans.fieldtransformHD),
 },
     'DR': {\
         'range_start_datetime': (1, datetransform),
@@ -284,7 +285,7 @@ transforms = {\
         'point_of_care': (1, None),
         'room': (2, None),
         'bed': (3, None),
-        'facility': (4, fieldtransform),
+        'facility': (4, compositetrans.fieldtransformHD),
         'location_status': (5, None),
         'person_location_type': (6, None),
         'building': (7, None),
@@ -302,7 +303,7 @@ transforms = {\
 },
     'CD': {\
         'channel_identifier': (1, None),
-        'channel_info': (2, fieldtransform),
+        'channel_info': (2, compositetrans.fieldtransformCD_INFO),
         'electrode_names': (3, None),
         'channel_sensitivityunits': (4, None),
         'calibration_parameters': (5, None),
@@ -310,14 +311,14 @@ transforms = {\
         'minimummaximum_data_values': (7, None),
 },
     'IS': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'MO': {\
         'quantity': (1, numtransform),
         'denomination': (2, None),
 },
     'FT': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'FC': {\
         'financial_class': (1, None),
@@ -333,3 +334,4 @@ transforms = {\
         'value7': (7, numtransform),
 },
 }
+

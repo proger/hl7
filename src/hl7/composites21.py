@@ -1,28 +1,29 @@
-from hl7util import *
+from hl7trans import *
+import compositetrans
 transforms = {\
     'SI': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'ST': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'UN': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'NM': {\
-        'value': (1, fieldtransform),
+        'value': (1, numtransform),
 },
     'TN': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'DT': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TS': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TX': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'AD': {\
         'street_address': (1, None),
@@ -33,15 +34,15 @@ transforms = {\
         'country': (6, None),
 },
     'ID': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'PN': {\
-        'family_name': (1, fieldtransform),
-        'given_name': (2, fieldtransform),
-        'middle_initial': (3, fieldtransform),
-        'suffix': (4, fieldtransform),
-        'prefix': (5, fieldtransform),
-        'degree': (6, fieldtransform),
+        'family_name': (1, None),
+        'given_name': (2, None),
+        'middle_initial': (3, None),
+        'suffix': (4, None),
+        'prefix': (5, None),
+        'degree': (6, None),
 },
     'CM': {\
         'field1': (1, None),
@@ -53,7 +54,7 @@ transforms = {\
 },
     'CQ': {\
         'quantity': (1, numtransform),
-        'units': (2, fieldtransform),
+        'units': (2, compositetrans.fieldtransformCE),
 },
     'CN': {\
         'id_number': (1, None),
@@ -73,3 +74,4 @@ transforms = {\
         'check_digit': (2, numtransform),
 },
 }
+

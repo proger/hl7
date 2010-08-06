@@ -57,9 +57,10 @@ def parse_segment(fname):
     sax.parse(fname, cg)
     return cg
 
-def write_composites(ref, segments):
+def write_composites(ref, segments, fieldtransforms):
     f = open("hl7/composites%s.py" % ref, "w")
-    f.write("from hl7util import *\n")
+    f.write("from hl7trans import *\n")
+    f.write("import compositetrans\n")
     f.write("transforms = {\\\n")
     for seg in segments:
         txt = "    '%s': {\\\n" % seg.name.upper()
@@ -81,25 +82,29 @@ def write_composites(ref, segments):
                     fieldname += "_"
                     prev_space = True
 
-            datatype = field['datatype']
+            datatype = str(field['datatype'])
             if datatype in ['DT', 'TM', 'TS']:
                 datatype = 'datetransform'
-            elif datatype in ['ID', 'TN', 'TX', 'ST', 'FT', 'IS']:
+            elif datatype in ['ID', 'TN', 'TX', 'ST', 'FT', 'IS', 'SI',
+                                'String', 'Date', 'Time']:
                 datatype = 'None'
-            elif datatype == 'NM':
+            elif datatype in ['NM', 'Double']:
                 datatype = 'numtransform'
             else:
-                datatype = 'fieldtransform'
+                fieldtransforms.add(datatype)
+                datatype = 'compositetrans.fieldtransform%s' % datatype
 
             txt += "        '%s': (%d, %s),\n" % (fieldname, idx, datatype)
         txt += "},\n"
         f.write(txt)
-    f.write("}\n")
+    f.write("}\n\n")
+
     f.close()
 
-def write_segments(ref, segments):
+def write_segments(ref, segments, fieldtransforms):
     f = open("hl7/segments%s.py" % ref, "w")
-    f.write("from hl7util import *\n")
+    f.write("from hl7trans import *\n")
+    f.write("import compositetrans\n")
     f.write("transforms = {\\\n")
     for seg in segments:
         txt = "    '%s': {\\\n" % seg.name.upper()
@@ -126,15 +131,20 @@ def write_segments(ref, segments):
             datatype = field['datatype']
             if datatype in ['DT', 'TM', 'TS']:
                 datatype = 'datetransform'
-            else:
+            elif datatype in ['ID', 'TN', 'TX', 'ST', 'FT', 'IS', 'SI']:
                 datatype = 'None'
+            elif datatype == 'NM':
+                datatype = 'numtransform'
+            else:
+                fieldtransforms.add(datatype)
+                datatype = 'compositetrans.fieldtransform%s' % datatype
             txt += "        '%s': (%d, %s),\n" % (fieldname, idx, datatype)
         txt += "},\n"
         f.write(txt)
     f.write("}\n")
     f.close()
 
-def parse_reference(ref):
+def parse_reference(ref, fieldtransforms):
     segments = []
     composites = []
     refpath = os.path.join("./reference/", ref)
@@ -146,10 +156,23 @@ def parse_reference(ref):
             fname = os.path.join(refpath, fname)
             composites.append(parse_segment(fname))
 
-    write_segments(ref, segments)
-    write_composites(ref, composites)
+    write_segments(ref, segments, fieldtransforms)
+    write_composites(ref, composites, fieldtransforms)
 
 if __name__ == '__main__':
+    fieldtransforms = set()
     for d in os.listdir("./reference"):
         if d.isdigit():
-            parse_reference(d)
+            parse_reference(d, fieldtransforms)
+
+    f = open("hl7/compositetrans.py", "w")
+
+    for datatype in fieldtransforms:
+        f.write("""\
+def fieldtransform%s(obj, data, val):
+    return fieldtransform(obj, data, val, '%s')
+
+""" % (datatype, datatype))
+
+    f.close()
+

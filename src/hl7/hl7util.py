@@ -1,47 +1,83 @@
-import datetime
 
-def numtransform(obj, data, dt):
-    dt = dt[0]
-    return float(dt)
-    
-def datetransform(obj, data, dt):
-    dt = dt[0]
-    args = [dt[:4], dt[4:6], dt[6:8]]
-    if len(dt) > 8:
-        args.append(dt[8:10])
-    if len(dt) > 10:
-        args.append(dt[10:12])
-    if len(dt) > 12:
-        args.append(dt[12:14])
-    zargs = [0] * 7
-    zargs = zargs[len(args):]
-    args = args + zargs
-    args = map(int, args)
-    #args.append(datetime.tzinfo("+0000")) # TODO: extract possible timezone
-    args = tuple(args)
-    return datetime.datetime(*args)
+class TIter(object):
+    def __init__(self, d):
+        self.cls = d.__class__
+        self._message = d._message
+        self._segname = d.segname
+        self.i = d.data.__iter__()
+    def __iter__(self):
+        return self
+    def next(self):
+        data = self.i.next()
+        return self.cls(self._message, data, self._segname)
 
-def typetrans(obj, data, val):
-    val = val[0]
-    if val == u'' and data[3][0] == u'HTML': # HTML-formatted
-        return unicode
-    if val == u'NM':
-        return float
-    elif val == u'DT' or val == u'TM': # date
-        return lambda x: datetransform(None, None, x)
-    elif val == u'TX': # text
-        return unicode
-    elif val == u'ST': # same as string (geez)
-        return unicode
-    elif val == u'FT': # formatted text: TODO - format it.  duh.
-        return unicode
-    elif val == u'CE': # coded element
-        return lambda x:x
-    raise KeyError, "OBX 002 unrecognised value type '%s' on %s" % \
-                (val, repr(data))
+class FieldTransform(object):
+    def __init__(self, obj, data, compname):
+        from composites import composite_revs
+        self.data = data
+        self._message = obj._message
+        self._version = obj._message._version
+        self.compname = compname
+        self._transform = composite_revs[self._version].transforms[self.compname]
 
+    def __cmp__(self, data):
+        return cmp(self.data, data.data)
 
-def obxrestrans(obj, data, val):
-    val = val[0]
-    return obj.valuetype(val)
+    def __str__(self):
+        return str(self.data)
+
+    def __iter__(self):
+        return TIter(self).__iter__()
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            if key > len(self.data):
+                return None
+            return self.fieldcheck(self.data[key])
+        return self.__class__(self.data[key])
+
+    def __getattr__(self, key):
+        if isinstance(key, int):
+            if key > len(self.data):
+                return None
+            return self.fieldcheck(self.data[key])
+        tf = self.get_transform(key)
+        idx = tf[0]
+        typ = tf[1]
+        if idx >= len(self.data):
+            return None
+        val = self.data[idx]
+        if typ is None:
+            val = self.fieldcheck(val)
+        if typ and val is not None:
+            val = typ(self, self.data, val)
+        return val
+
+    def fieldcheck(self, val):
+        if len(val) == 0:
+            return None
+        if len(val) == 1:
+            if val[0] == u'':
+                return None
+            return val[0]
+        return val
+
+    def get_transform(self, key):
+        if self.transform.has_key(key):
+            return self.transform[key]
+        return self._transform[key]
+
+def fieldtransform(obj, data, val, compname):
+    if isinstance(val, list):
+        if len(val) == 0:
+            return None
+        if len(val) == 1 and len(val[0]) == 0:
+            return None
+    return FieldTransform(obj, val, compname)
+
+import composites
+composites.fieldtransform = fieldtransform
+import compositetrans
+compositetrans.fieldtransform = fieldtransform
+composites.fieldtransform = fieldtransform
 

@@ -109,7 +109,9 @@ from xml.sax import saxutils, handler
 from xml import sax
 
 from segments import segment_revs
+import compositetrans
 from hl7util import *
+from hl7trans import *
 
 def ishl7(line):
     """Determines whether a *line* looks like an HL7 message.
@@ -195,13 +197,16 @@ class Message(Container):
     """
     def __getitem__(self, key):
         res = []
+        #print "__getitem__", key, len(self)
         for (i, seg) in enumerate(self):
-            #print type(i), type(i[0]), repr(i[0]), repr(key)
-            if seg[0][0] == unicode(key):
+            #print type(seg), type(seg[0]), repr(seg[0]), repr(key), seg[0][0]
+            if str(seg[0][0]) == str(key):
                 seg._idx = i
                 res.append(seg)
+                #print "added", seg, i
         if len(res) == 0:
             raise KeyError, "key %s not found in Message" % key
+        #print "res", res
         return res
 
 class Segment(Container):
@@ -271,21 +276,9 @@ class _ParsePlan(object):
         return None
 
 
-class TIter(object):
-    def __init__(self, d):
-        self.cls = d.__class__
-        self._message = d._message
-        self._segname = d.segname
-        self.i = d.data.__iter__()
-    def __iter__(self):
-        return self
-    def next(self):
-        data = self.i.next()
-        return self.cls(self._message, data, self._segname)
-
-
 class Transform(object):
     def __init__(self, message, data, segname):
+        #print "Transform", segname, message, data
         self.data = data
         self._message = message
         self.segname = segname
@@ -302,6 +295,7 @@ class Transform(object):
         return self.__class__(self.data[key])
 
     def __getattr__(self, key):
+        #print "Transform __getattr__", repr(key)
         if key == 'NTE':
             idx = self.data._idx
             for (i, seg) in enumerate(self._message._hl7):
@@ -311,7 +305,9 @@ class Transform(object):
             return None
         elif key in [ 'OBR', 'ORC']:
             sn = str(self.data[0])
+            #print "Transform __getattr__", key, sn
             if sn == 'ORC' and key == 'OBR':
+                #print "filler", str(self.filler_order_number)
                 return self._message.get_obr_by_order_id(
                                     self.filler_order_number)
             elif sn == 'OBR' and key == 'ORC':
@@ -382,7 +378,7 @@ class cMSH(Transform):
 class cPID(Transform):
     """
     """
-    transform = { 'patients_name': (5, None),
+    transform = { 'patients_name': (5, compositetrans.fieldtransformPN),
                   'datetime_of_birth': (7, datetransform),
                   'patient_id_external_id': (2, None),
                   'patient_id_internal_id': (3, None),
@@ -454,12 +450,14 @@ class cMessage(object):
     OBX = property(get_obx)
     def get_orc_by_order_id(self, order_id):
         for orc in self.ORC:
+            #print "get_orc_by_order_id", orc.filler_order_number, order_id
             if orc.filler_order_number == order_id:
                 return orc
         return None
 
     def get_obr_by_order_id(self, order_id):
         for obr in self.OBR:
+            #print "get_obr_by_order_id", obr.filler_order_number, order_id
             if obr.filler_order_number == order_id:
                 return obr
         return None
@@ -536,15 +534,16 @@ if __name__ == '__main__':
                 m.receiving_application
 
         p = hl7.PID
-        print "patient", p.patient_id_internal_id, map(str, p.patients_name), \
+        print "patient", p.patient_id_internal_id, p.patients_name, \
                 p.patient_id_external_id, p.alternate_patient_id, \
                 p.sex, p.datetime_of_birth, p.patient_address, \
-                p.phone_number_home
+                p.phone_number_home #, p.patients_name
 
         for (i, o) in enumerate(hl7.ORC):
             print "ORC", i, o.request_id, o.filler_order_number, \
                             o.ordering_provider
             b = o.OBR
+            #print "b", type(b), b
             print "OBR", i, b.set_id, b.filler_order_number, \
                         b.specimen_received_datetime, \
                         b.results_rptstatus_chng_datetime, \

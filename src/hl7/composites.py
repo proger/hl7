@@ -12,5 +12,4 @@ composite_revs = {'2.1': composites21,
                     '2.4': composites24,
                     '2.5': composites25,
                    }
-__all__ = ['composite_revs']
 

@@ -1,13 +1,14 @@
-from hl7util import *
+from hl7trans import *
+import compositetrans
 transforms = {\
     'DLT': {\
-        'range': (1, fieldtransform),
+        'range': (1, compositetrans.fieldtransformNR),
         'numeric_threshold': (2, numtransform),
         'change_computation': (3, None),
         'length_of_time_days': (4, numtransform),
 },
     'SI': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'VR': {\
         'first_data_code_value': (1, None),
@@ -19,10 +20,10 @@ transforms = {\
         'expiration_date': (3, datetransform),
 },
     'ST': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TM': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'QIP': {\
         'field_name': (1, None),
@@ -35,10 +36,10 @@ transforms = {\
         'universal_id_type': (4, None),
 },
     'NM': {\
-        'value': (1, fieldtransform),
+        'value': (1, numtransform),
 },
     'TN': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'VH': {\
         'start_day_range': (1, None),
@@ -48,46 +49,46 @@ transforms = {\
 },
     'XCN': {\
         'id_number_st': (1, None),
-        'family_last_name': (2, fieldtransform),
+        'family_last_name': (2, compositetrans.fieldtransformFN),
         'given_name': (3, None),
         'middle_initial_or_name': (4, None),
         'suffix': (5, None),
         'prefix': (6, None),
         'degree': (7, None),
         'source_table': (8, None),
-        'assigning_authority': (9, fieldtransform),
+        'assigning_authority': (9, compositetrans.fieldtransformHD),
         'name_type_code': (10, None),
         'identifier_check_digit': (11, None),
         'code_identifying_the_check_digit_scheme_employed': (12, None),
         'identifier_type_code': (13, None),
-        'assigning_facility': (14, fieldtransform),
+        'assigning_facility': (14, compositetrans.fieldtransformHD),
         'name_representation_code': (15, None),
 },
     'DT': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'TS': {\
-        'time_of_an_event': (1, fieldtransform),
+        'time_of_an_event': (1, None),
         'degree_of_precision': (2, None),
 },
     'TX': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'PPN': {\
         'id_number_nm': (1, numtransform),
-        'family_last_name': (2, fieldtransform),
+        'family_last_name': (2, compositetrans.fieldtransformFN),
         'given_name': (3, None),
         'middle_initial_or_name': (4, None),
         'suffix': (5, None),
         'prefix': (6, None),
         'degree': (7, None),
         'source_table': (8, None),
-        'assigning_authority': (9, fieldtransform),
+        'assigning_authority': (9, compositetrans.fieldtransformHD),
         'name_type_code': (10, None),
         'identifier_check_digit': (11, None),
         'code_identifying_the_check_digit_scheme_employed': (12, None),
         'identifier_type_code': (13, None),
-        'assigning_facility': (14, fieldtransform),
+        'assigning_facility': (14, compositetrans.fieldtransformHD),
         'datetime_action_performed': (15, datetransform),
         'name_representation_code': (16, None),
 },
@@ -109,12 +110,12 @@ transforms = {\
         'point_of_care_is': (1, None),
         'room': (2, None),
         'bed': (3, None),
-        'facility_hd': (4, fieldtransform),
+        'facility_hd': (4, compositetrans.fieldtransformHD),
         'location_status': (5, None),
         'person_location_type': (6, None),
         'building': (7, None),
         'floor': (8, None),
-        'address': (9, fieldtransform),
+        'address': (9, compositetrans.fieldtransformAD),
 },
     'PEN': {\
         'penalty_type': (1, None),
@@ -124,9 +125,9 @@ transforms = {\
         'id': (1, None),
         'check_digit': (2, numtransform),
         'code_identifying_the_check_digit_scheme_employed': (3, None),
-        'assigning_authority': (4, fieldtransform),
+        'assigning_authority': (4, compositetrans.fieldtransformHD),
         'identifier_type_code': (5, None),
-        'assigning_facility': (6, fieldtransform),
+        'assigning_facility': (6, compositetrans.fieldtransformHD),
 },
     'XAD': {\
         'street_address': (1, None),
@@ -142,7 +143,7 @@ transforms = {\
         'address_representation_code': (11, None),
 },
     'OSP': {\
-        'occurrence_span_code': (1, fieldtransform),
+        'occurrence_span_code': (1, compositetrans.fieldtransformCE),
         'occurrence_span_start_date': (2, datetransform),
         'occurrence_span_stop_date': (3, datetransform),
 },
@@ -152,15 +153,15 @@ transforms = {\
 },
     'DIN': {\
         'date': (1, datetransform),
-        'institution_name': (2, fieldtransform),
+        'institution_name': (2, compositetrans.fieldtransformCE),
 },
     'JCC': {\
         'job_code': (1, None),
         'job_class': (2, None),
 },
     'TQ': {\
-        'quantity': (1, fieldtransform),
-        'interval': (2, fieldtransform),
+        'quantity': (1, compositetrans.fieldtransformCQ),
+        'interval': (2, compositetrans.fieldtransformRI),
         'duration': (3, None),
         'start_datetime': (4, datetransform),
         'end_datetime': (5, datetransform),
@@ -168,8 +169,8 @@ transforms = {\
         'condition': (7, None),
         'text': (8, None),
         'conjunction': (9, None),
-        'order_sequencing': (10, fieldtransform),
-        'occurrence_duration': (11, fieldtransform),
+        'order_sequencing': (10, compositetrans.fieldtransformOSD),
+        'occurrence_duration': (11, compositetrans.fieldtransformCE),
         'total_occurences': (12, numtransform),
 },
     'DTN': {\
@@ -177,18 +178,18 @@ transforms = {\
         'number_of_days': (2, numtransform),
 },
     'ID': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'PT': {\
         'processing_id': (1, None),
         'processing_mode': (2, None),
 },
     'CP': {\
-        'price': (1, fieldtransform),
+        'price': (1, compositetrans.fieldtransformMO),
         'price_type': (2, None),
         'from_value': (3, numtransform),
         'to_value': (4, numtransform),
-        'range_units': (5, fieldtransform),
+        'range_units': (5, compositetrans.fieldtransformCE),
         'range_type': (6, None),
 },
     'MSG': {\
@@ -197,17 +198,17 @@ transforms = {\
         'message_structure': (3, None),
 },
     'SPS': {\
-        'specimen_source_name_or_code': (1, fieldtransform),
+        'specimen_source_name_or_code': (1, compositetrans.fieldtransformCE),
         'additives': (2, None),
         'freetext': (3, None),
-        'body_site': (4, fieldtransform),
-        'site_modifier': (5, fieldtransform),
-        'collection_modifier_method_code': (6, fieldtransform),
-        'specimen_role': (7, fieldtransform),
+        'body_site': (4, compositetrans.fieldtransformCE),
+        'site_modifier': (5, compositetrans.fieldtransformCE),
+        'collection_modifier_method_code': (6, compositetrans.fieldtransformCE),
+        'specimen_role': (7, compositetrans.fieldtransformCE),
 },
     'MOC': {\
-        'dollar_amount': (1, fieldtransform),
-        'charge_code': (2, fieldtransform),
+        'dollar_amount': (1, compositetrans.fieldtransformMO),
+        'charge_code': (2, compositetrans.fieldtransformCE),
 },
     'NR': {\
         'low_value': (1, numtransform),
@@ -234,13 +235,13 @@ transforms = {\
         'other_qualifying_info': (3, None),
 },
     'NDL': {\
-        'name': (1, fieldtransform),
+        'name': (1, compositetrans.fieldtransformCN),
         'start_datetime': (2, datetransform),
         'end_datetime': (3, datetransform),
         'point_of_care_is': (4, None),
         'room': (5, None),
         'bed': (6, None),
-        'facility_hd': (7, fieldtransform),
+        'facility_hd': (7, compositetrans.fieldtransformHD),
         'location_status': (8, None),
         'person_location_type': (9, None),
         'building': (10, None),
@@ -257,9 +258,9 @@ transforms = {\
         'id_number_nm': (3, numtransform),
         'check_digit': (4, numtransform),
         'code_identifying_the_check_digit_scheme_employed': (5, None),
-        'assigning_authority': (6, fieldtransform),
+        'assigning_authority': (6, compositetrans.fieldtransformHD),
         'identifier_type_code': (7, None),
-        'assigning_facility_id': (8, fieldtransform),
+        'assigning_facility_id': (8, compositetrans.fieldtransformHD),
         'name_representation_code': (9, None),
 },
     'UVC': {\
@@ -268,8 +269,8 @@ transforms = {\
 },
     'VID': {\
         'version_id': (1, None),
-        'internationalization_code': (2, fieldtransform),
-        'international_version_id': (3, fieldtransform),
+        'internationalization_code': (2, compositetrans.fieldtransformCE),
+        'international_version_id': (3, compositetrans.fieldtransformCE),
 },
     'AUI': {\
         'authorization_number': (1, None),
@@ -277,10 +278,10 @@ transforms = {\
         'source': (3, None),
 },
     'RFR': {\
-        'reference_range': (1, fieldtransform),
+        'reference_range': (1, compositetrans.fieldtransformNR),
         'administrative_sex': (2, None),
-        'age_range': (3, fieldtransform),
-        'gestational_age_range': (4, fieldtransform),
+        'age_range': (3, compositetrans.fieldtransformNR),
+        'gestational_age_range': (4, compositetrans.fieldtransformNR),
         'species': (5, None),
         'racesubspecies': (6, None),
         'conditions': (7, None),
@@ -292,7 +293,7 @@ transforms = {\
 },
     'CQ': {\
         'quantity': (1, numtransform),
-        'units': (2, fieldtransform),
+        'units': (2, compositetrans.fieldtransformCE),
 },
     'PCF': {\
         'pre_certification_patient_type': (1, None),
@@ -323,10 +324,10 @@ transforms = {\
         'segment_id': (1, None),
         'sequence': (2, numtransform),
         'field_position': (3, numtransform),
-        'code_identifying_error': (4, fieldtransform),
+        'code_identifying_error': (4, compositetrans.fieldtransformCE),
 },
     'PRL': {\
-        'obx_3_observation_identifier_of_parent_result': (1, fieldtransform),
+        'obx_3_observation_identifier_of_parent_result': (1, compositetrans.fieldtransformCE),
         'obx_4_sub_id_of_parent_result': (2, None),
         'part_of_obx_5_observation_result_from_parent': (3, None),
 },
@@ -337,8 +338,8 @@ transforms = {\
         'relational_conjunction': (4, None),
 },
     'EIP': {\
-        'parents_placer_order_number': (1, fieldtransform),
-        'parents_filler_order_number': (2, fieldtransform),
+        'parents_placer_order_number': (1, compositetrans.fieldtransformEI),
+        'parents_filler_order_number': (2, compositetrans.fieldtransformEI),
 },
     'CN': {\
         'id_number_st': (1, None),
@@ -349,7 +350,7 @@ transforms = {\
         'prefix': (6, None),
         'degree': (7, None),
         'source_table': (8, None),
-        'assigning_authority': (9, fieldtransform),
+        'assigning_authority': (9, compositetrans.fieldtransformHD),
 },
     'CE': {\
         'identifier': (1, None),
@@ -376,7 +377,7 @@ transforms = {\
         'id_number_nm': (1, numtransform),
         'check_digit': (2, numtransform),
         'code_identifying_the_check_digit_scheme_employed': (3, None),
-        'assigning_authority': (4, fieldtransform),
+        'assigning_authority': (4, compositetrans.fieldtransformHD),
 },
     'SPD': {\
         'specialty_name': (1, None),
@@ -405,7 +406,7 @@ transforms = {\
         'point_of_care_is': (1, None),
         'room': (2, None),
         'bed': (3, None),
-        'facility_hd': (4, fieldtransform),
+        'facility_hd': (4, compositetrans.fieldtransformHD),
         'location_status': (5, None),
         'person_location_type': (6, None),
         'building': (7, None),
@@ -423,7 +424,7 @@ transforms = {\
         'point_of_care': (1, None),
         'room': (2, None),
         'bed': (3, None),
-        'facility_hd': (4, fieldtransform),
+        'facility_hd': (4, compositetrans.fieldtransformHD),
         'location_status': (5, None),
         'person_location_type': (6, None),
         'building': (7, None),
@@ -431,7 +432,7 @@ transforms = {\
         'location_description': (9, None),
 },
     'XPN': {\
-        'family_last_name': (1, fieldtransform),
+        'family_last_name': (1, compositetrans.fieldtransformFN),
         'given_name': (2, None),
         'middle_initial_or_name': (3, None),
         'suffix': (4, None),
@@ -441,7 +442,7 @@ transforms = {\
         'name_representation_code': (8, None),
 },
     'IS': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'MO': {\
         'quantity': (1, numtransform),
@@ -452,17 +453,18 @@ transforms = {\
         'datetime': (2, datetransform),
 },
     'FT': {\
-        'value': (1, fieldtransform),
+        'value': (1, None),
 },
     'FC': {\
         'financial_class': (1, None),
         'effective_date': (2, datetransform),
 },
     'PIP': {\
-        'privilege': (1, fieldtransform),
-        'privilege_class': (2, fieldtransform),
+        'privilege': (1, compositetrans.fieldtransformCE),
+        'privilege_class': (2, compositetrans.fieldtransformCE),
         'expiration_date': (3, datetransform),
         'activation_date': (4, datetransform),
-        'facility_ei': (5, fieldtransform),
+        'facility_ei': (5, compositetrans.fieldtransformEI),
 },
 }
+
