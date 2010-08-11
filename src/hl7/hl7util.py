@@ -21,6 +21,9 @@ class FieldTransform(object):
         cr = composite_revs[self._version]
         self._transform = cr.transforms[self.segname]
 
+    def keys(self):
+        return self._transform.keys()
+
     def __cmp__(self, data):
         return cmp(self.data, data.data)
 
